@@ -1,0 +1,16 @@
+code: squad-teste-simples
+name: Squad de Teste Simples
+icon: 📝
+description: Recebe um tema, gera um parágrafo e pede aprovação.
+agents:
+  - id: redator
+    name: Redator
+    icon: ✍️
+pipeline:
+  steps:
+    - id: gerar-paragrafo
+      label: Gerar Parágrafo
+      agent: redator
+    - id: checkpoint-aprovacao
+      label: Aprovação
+      type: checkpoint

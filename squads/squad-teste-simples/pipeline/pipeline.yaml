@@ -1,0 +1,5 @@
+steps:
+  - id: gerar-paragrafo
+    file: gerar-paragrafo.md
+  - id: checkpoint-aprovacao
+    file: checkpoint-aprovacao.md

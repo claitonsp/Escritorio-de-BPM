@@ -1,0 +1,23 @@
+{
+  "squad": "squad-teste-simples",
+  "status": "completed",
+  "step": { "current": 2, "total": 2, "label": "checkpoint-aprovacao" },
+  "agents": [
+    {
+      "id": "redator",
+      "name": "Redator",
+      "icon": "✍️",
+      "status": "done",
+      "desk": { "col": 1, "row": 1 }
+    }
+  ],
+  "handoff": {
+    "from": "redator",
+    "to": "user",
+    "message": "O parágrafo sobre gestão de processos de negócio foi gerado e está pronto para revisão.",
+    "completedAt": "2026-05-14T13:23:20Z"
+  },
+  "startedAt": "2026-05-14T13:22:45Z",
+  "updatedAt": "2026-05-14T13:26:15Z",
+  "completedAt": "2026-05-14T13:26:15Z"
+}
