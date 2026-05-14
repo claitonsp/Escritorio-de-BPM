@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "bpmn-auto-layout": "^1.3.0",
     "playwright": "^1.58.2"
   }
 }
