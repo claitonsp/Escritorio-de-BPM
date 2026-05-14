@@ -1,0 +1,8 @@
+code: spike-bpmn
+name: Spike BPMN
+icon: 📐
+agents:
+  - modelador
+pipeline:
+  steps:
+    - 01-gerar-bpmn

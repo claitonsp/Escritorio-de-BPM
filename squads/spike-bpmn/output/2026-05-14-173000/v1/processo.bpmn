@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             targetNamespace="http://example.com/bpmn">
+  <process id="proc-aprovacao-compra" name="Aprovação de Compra" isExecutable="false">
+    <laneSet id="laneSet-1">
+      <lane id="lane-solicitante" name="Solicitante">
+        <flowNodeRef>evt-inicio</flowNodeRef>
+        <flowNodeRef>act-preencher</flowNodeRef>
+        <flowNodeRef>act-notificar-rejeicao</flowNodeRef>
+        <flowNodeRef>evt-fim-rejeitado</flowNodeRef>
+      </lane>
+      <lane id="lane-gestor" name="Gestor">
+        <flowNodeRef>act-analisar</flowNodeRef>
+        <flowNodeRef>gw-aprovacao</flowNodeRef>
+        <flowNodeRef>act-notificar-aprovacao</flowNodeRef>
+        <flowNodeRef>evt-fim-aprovado</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="evt-inicio" name="Solicitação recebida" />
+    <task id="act-preencher" name="Preencher formulário de compra" />
+    <task id="act-analisar" name="Analisar solicitação" />
+    <exclusiveGateway id="gw-aprovacao" name="Aprovado?" />
+    <task id="act-notificar-aprovacao" name="Notificar aprovação" />
+    <task id="act-notificar-rejeicao" name="Notificar rejeição" />
+    <endEvent id="evt-fim-aprovado" name="Compra aprovada" />
+    <endEvent id="evt-fim-rejeitado" name="Compra rejeitada" />
+    <sequenceFlow id="flow-1" sourceRef="evt-inicio" targetRef="act-preencher" />
+    <sequenceFlow id="flow-2" sourceRef="act-preencher" targetRef="act-analisar" />
+    <sequenceFlow id="flow-3" sourceRef="act-analisar" targetRef="gw-aprovacao" />
+    <sequenceFlow id="flow-4" sourceRef="gw-aprovacao" targetRef="act-notificar-aprovacao">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow-5" sourceRef="gw-aprovacao" targetRef="act-notificar-rejeicao">
+      <conditionExpression xsi:type="tFormalExpression">Não</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow-6" sourceRef="act-notificar-aprovacao" targetRef="evt-fim-aprovado" />
+    <sequenceFlow id="flow-7" sourceRef="act-notificar-rejeicao" targetRef="evt-fim-rejeitado" />
+  </process>
+  <bpmndi:BPMNDiagram id="diagram-1">
+    <bpmndi:BPMNPlane id="plane-1" bpmnElement="proc-aprovacao-compra">
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

@@ -1,0 +1,23 @@
+{
+  "squad": "spike-bpmn",
+  "status": "completed",
+  "step": { "current": 1, "total": 1, "label": "01-gerar-bpmn" },
+  "agents": [
+    {
+      "id": "modelador",
+      "name": "Modelador BPMN",
+      "icon": "📐",
+      "status": "done",
+      "desk": { "col": 1, "row": 1 }
+    }
+  ],
+  "handoff": {
+    "from": "modelador",
+    "to": "user",
+    "message": "Gerado XML BPMN 2.0 a partir do JSON de teste.",
+    "completedAt": "2026-05-14T17:30:00Z"
+  },
+  "startedAt": "2026-05-14T17:30:00Z",
+  "updatedAt": "2026-05-14T17:30:00Z",
+  "completedAt": "2026-05-14T17:30:00Z"
+}

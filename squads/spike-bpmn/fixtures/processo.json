@@ -1,0 +1,44 @@
+{
+  "process": {
+    "id": "proc-aprovacao-compra",
+    "name": "Aprovação de Compra",
+    "lanes": [
+      { "id": "lane-solicitante", "name": "Solicitante" },
+      { "id": "lane-gestor", "name": "Gestor" }
+    ],
+    "events": {
+      "start": {
+        "id": "evt-inicio",
+        "name": "Solicitação recebida",
+        "lane": "lane-solicitante"
+      },
+      "end": [
+        { "id": "evt-fim-aprovado", "name": "Compra aprovada", "lane": "lane-gestor" },
+        { "id": "evt-fim-rejeitado", "name": "Compra rejeitada", "lane": "lane-solicitante" }
+      ]
+    },
+    "activities": [
+      { "id": "act-preencher", "name": "Preencher formulário de compra", "lane": "lane-solicitante" },
+      { "id": "act-analisar", "name": "Analisar solicitação", "lane": "lane-gestor" },
+      { "id": "act-notificar-aprovacao", "name": "Notificar aprovação", "lane": "lane-gestor" },
+      { "id": "act-notificar-rejeicao", "name": "Notificar rejeição", "lane": "lane-solicitante" }
+    ],
+    "gateways": [
+      {
+        "id": "gw-aprovacao",
+        "name": "Aprovado?",
+        "type": "exclusive",
+        "lane": "lane-gestor"
+      }
+    ],
+    "flows": [
+      { "id": "flow-1", "from": "evt-inicio",              "to": "act-preencher",           "condition": null },
+      { "id": "flow-2", "from": "act-preencher",           "to": "act-analisar",            "condition": null },
+      { "id": "flow-3", "from": "act-analisar",            "to": "gw-aprovacao",            "condition": null },
+      { "id": "flow-4", "from": "gw-aprovacao",            "to": "act-notificar-aprovacao", "condition": "Sim" },
+      { "id": "flow-5", "from": "gw-aprovacao",            "to": "act-notificar-rejeicao",  "condition": "Não" },
+      { "id": "flow-6", "from": "act-notificar-aprovacao", "to": "evt-fim-aprovado",        "condition": null },
+      { "id": "flow-7", "from": "act-notificar-rejeicao",  "to": "evt-fim-rejeitado",       "condition": null }
+    ]
+  }
+}

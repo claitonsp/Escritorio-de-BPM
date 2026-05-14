@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" targetNamespace="http://example.com/bpmn">
+  <process id="proc-aprovacao-compra" name="Aprovação de Compra" isExecutable="false">
+    <laneSet id="laneSet-1">
+      <lane id="lane-solicitante" name="Solicitante">
+        <flowNodeRef>evt-inicio</flowNodeRef>
+        <flowNodeRef>act-preencher</flowNodeRef>
+        <flowNodeRef>act-notificar-rejeicao</flowNodeRef>
+        <flowNodeRef>evt-fim-rejeitado</flowNodeRef>
+      </lane>
+      <lane id="lane-gestor" name="Gestor">
+        <flowNodeRef>act-analisar</flowNodeRef>
+        <flowNodeRef>gw-aprovacao</flowNodeRef>
+        <flowNodeRef>act-notificar-aprovacao</flowNodeRef>
+        <flowNodeRef>evt-fim-aprovado</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="evt-inicio" name="Solicitação recebida" />
+    <task id="act-preencher" name="Preencher formulário de compra" />
+    <task id="act-analisar" name="Analisar solicitação" />
+    <exclusiveGateway id="gw-aprovacao" name="Aprovado?" />
+    <task id="act-notificar-aprovacao" name="Notificar aprovação" />
+    <task id="act-notificar-rejeicao" name="Notificar rejeição" />
+    <endEvent id="evt-fim-aprovado" name="Compra aprovada" />
+    <endEvent id="evt-fim-rejeitado" name="Compra rejeitada" />
+    <sequenceFlow id="flow-1" sourceRef="evt-inicio" targetRef="act-preencher" />
+    <sequenceFlow id="flow-2" sourceRef="act-preencher" targetRef="act-analisar" />
+    <sequenceFlow id="flow-3" sourceRef="act-analisar" targetRef="gw-aprovacao" />
+    <sequenceFlow id="flow-4" sourceRef="gw-aprovacao" targetRef="act-notificar-aprovacao">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow-5" sourceRef="gw-aprovacao" targetRef="act-notificar-rejeicao">
+      <conditionExpression xsi:type="tFormalExpression">Não</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow-6" sourceRef="act-notificar-aprovacao" targetRef="evt-fim-aprovado" />
+    <sequenceFlow id="flow-7" sourceRef="act-notificar-rejeicao" targetRef="evt-fim-rejeitado" />
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_proc-aprovacao-compra">
+    <bpmndi:BPMNPlane id="BPMNPlane_proc-aprovacao-compra" bpmnElement="proc-aprovacao-compra">
+      <bpmndi:BPMNShape id="evt-inicio_di" bpmnElement="evt-inicio">
+        <dc:Bounds x="57" y="52" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="act-preencher_di" bpmnElement="act-preencher">
+        <dc:Bounds x="25" y="170" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="act-analisar_di" bpmnElement="act-analisar">
+        <dc:Bounds x="25" y="310" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw-aprovacao_di" bpmnElement="gw-aprovacao" isMarkerVisible="true">
+        <dc:Bounds x="50" y="465" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="act-notificar-aprovacao_di" bpmnElement="act-notificar-aprovacao">
+        <dc:Bounds x="25" y="590" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="act-notificar-rejeicao_di" bpmnElement="act-notificar-rejeicao">
+        <dc:Bounds x="25" y="730" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="evt-fim-aprovado_di" bpmnElement="evt-fim-aprovado">
+        <dc:Bounds x="57" y="892" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="evt-fim-rejeitado_di" bpmnElement="evt-fim-rejeitado">
+        <dc:Bounds x="57" y="1032" width="36" height="36" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

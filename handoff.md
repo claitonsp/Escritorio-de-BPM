@@ -41,6 +41,26 @@ Adotamos abordagem híbrida: **Spike-Driven Discovery (XP)** seguida de **Walkin
 
 ## Estado atual do projeto (2026-05-14)
 
+**Spike 2 concluído.** Arquivos em `squads/spike-bpmn/`. Output em `squads/spike-bpmn/output/2026-05-14-173000/v1/`.
+
+### O que aprendemos no Spike 2: Geração BPMN
+
+**Pergunta 1: LLM gera XML BPMN 2.0 válido em uma única chamada?**
+Sim. O XML gerado foi importado no Bizagi Modeler 4.3 e renderizado no bpmn.io sem erros de parsing na primeira tentativa. Nenhuma correção manual foi necessária na estrutura do XML.
+
+**Pergunta 2: Qual o limite de complexidade?**
+Não atingido neste spike. O processo era simples (1 startEvent, 2 endEvents, 4 tasks, 1 exclusiveGateway, 2 lanes, 7 sequenceFlows). O limite será investigado em spike posterior, quando os agentes reais processarem transcrições de entrevistas.
+
+**Pergunta 3: O bpmn-auto-layout renderiza sem coordenadas manuais?**
+Parcialmente. A biblioteca `bpmn-auto-layout` (npm) gera `BPMNShape` com `dc:Bounds` para nós, mas tem duas limitações confirmadas: não gera `BPMNEdge` para sequenceFlows e não respeita `laneSet` ao calcular posições, colocando elementos de raias distintas na mesma coluna x. O resultado é renderizável mas sem setas e com raias desrespeitadas.
+
+**Decisão metodológica:** aceitar layout parcial para o walking skeleton. Layout de qualidade é refinamento posterior. A Alternativa B (bpmn-js via Node.js) resolve o problema de forma completa mas será endereçada após os quatro agentes estarem funcionando.
+
+**Descoberta adicional sobre o opensquad:**
+O comando `npx opensquad run` não existe na v0.1.15. A CLI do opensquad é exclusivamente para setup (init, update, install, uninstall, skills, agents, runs). Squads rodam através do pipeline runner interno do Claude Code, via slash commands, não via terminal autônomo. O Gemini atuou diretamente como agente executor escrevendo o arquivo em disco.
+
+**Bizagi Modeler 4.3:** importa arquivos `.bpmn` normalmente via botão BPMN na aba Exportar/importar. A limitação reportada anteriormente (só .bpm e .bpmc) não se confirmou na prática.
+
 **Spike 1 concluído.** Commit: "Initial spike: opensquad platform validation".
 
 ### O que aprendemos sobre o opensquad
@@ -84,25 +104,24 @@ squads/{name}/
 
 **Consumo de tokens:** não mensurável diretamente no Antigravity. Pendência para observação empírica nos agentes BPM reais.
 
-## Próxima ação concreta: Spike 2, Geração BPMN
+## Próxima ação concreta: Spike 3, Ingestão de Entrevista
 
-Objetivo: validar que conseguimos produzir XML BPMN 2.0 válido a partir de um JSON de processo simples, dentro de um squad opensquad.
+Objetivo: validar que o agente de Elicitação (BABOK) consegue extrair entidades estruturadas de uma transcrição de entrevista real ou simulada e produzir o JSON que alimenta o agente Modelador.
 
-O que precisamos responder ao final do Spike 2:
-- Um LLM consegue gerar XML BPMN 2.0 sintaticamente válido em uma única chamada, dado um JSON de processo simples?
-- Qual é o limite prático de complexidade antes de o XML começar a apresentar erros estruturais?
-- O bpmn-auto-layout (bpmn.io) ou elk.js consegue receber esse XML e renderizar sem coordenadas manuais?
+O que precisamos responder ao final do Spike 3:
+- O agente consegue identificar atores, eventos, atividades, regras de negócio e sistemas a partir de uma transcrição não estruturada?
+- O JSON de saída é compatível com o schema que o agente Modelador espera como input?
+- Qual é o nível de ruído tolerável na transcrição antes de o agente falhar ou alucinar entidades?
 
 Sequência sugerida para delegar ao Gemini:
 
-1. Criar manualmente um JSON de processo fictício simples (3 a 5 atividades, 1 gateway, 2 raias) como fixture de teste
-2. Criar um squad `spike-bpmn` com um único agente Modelador, cujo step recebe o JSON e retorna XML BPMN 2.0
-3. Rodar o squad com o JSON fixture como input
-4. Salvar o XML gerado e validá-lo com uma ferramenta online (exemplo: bpmn.io/toolkit/bpmn-js) ou script Python com biblioteca `lxml`
-5. Se válido, testar o auto-layout via script Python com bpmn-auto-layout ou elk.js
-6. Registrar: o XML foi válido na primeira tentativa? Quantas correções foram necessárias?
+1. Criar uma transcrição de entrevista fictícia simples (10 a 15 turnos de fala, processo de aprovação de compra ou similar)
+2. Criar um squad `spike-elicitacao` com um único agente Elicitador, cujo step recebe a transcrição e retorna JSON estruturado
+3. Rodar o squad com a transcrição como input
+4. Validar manualmente se o JSON de saída é compatível com o schema do fixture do Spike 2
+5. Registrar: quantas entidades foram identificadas corretamente? Houve alucinações?
 
-**Critério de sucesso:** XML BPMN 2.0 válido gerado pelo agente, renderizável no bpmn.io sem edição manual de coordenadas.
+**Critério de sucesso:** JSON de saída compatível com o schema do agente Modelador, sem entidades inventadas não presentes na transcrição.
 
 ## Regras de estilo invioláveis
 
