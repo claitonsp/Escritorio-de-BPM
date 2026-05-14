@@ -31,35 +31,78 @@ Pipeline de quatro agentes especializados:
 - **Construtor**: Gemini (sessão separada no Antigravity)
 - **Pasta do projeto**: `C:\Users\Claiton\Documents\Escritorio-de-BPM`
 - **Node**: v24.13.1 (confirmado, acima do mínimo v20)
-- **Git**: instalado
+- **Git**: instalado, branch main, commit inicial feito
 
 ## Decisão metodológica vigente
 
-Recusamos montar WBS detalhado agora. Motivo: três incertezas simultâneas (produto, técnica, plataforma) tornam qualquer plano detalhado prematuro. O risco é gastar dois dias num checklist que envelhece em uma semana.
+Recusamos montar WBS detalhado agora. Motivo: três incertezas simultâneas (produto, técnica, plataforma) tornam qualquer plano detalhado prematuro.
 
 Adotamos abordagem híbrida: **Spike-Driven Discovery (XP)** seguida de **Walking Skeleton (Cockburn)**, e só depois consolidação em WBS. Três spikes em timebox de um dia útil cada, na ordem: plataforma, geração BPMN, ingestão de entrevista.
 
-## Próxima ação concreta: Spike 1, Plataforma
+## Estado atual do projeto (2026-05-14)
 
-Objetivo: validar que o opensquad roda na máquina e observar seu comportamento real antes de tocar em qualquer skill BPM.
+**Spike 1 concluído.** Commit: "Initial spike: opensquad platform validation".
 
-Sequência a delegar ao Gemini:
+### O que aprendemos sobre o opensquad
 
-1. `cd C:\Users\Claiton\Documents\Escritorio-de-BPM`
-2. `git init`
-3. Criar `.gitignore` mínimo, incluindo `node_modules/`, `.env`, `_opensquad/_browser_profile/`
-4. `npx opensquad init`, aceitar defaults, idioma português
-5. Listar squads do catálogo disponível com `/opensquad list` ou comando equivalente
-6. Escolher um squad simples como caso de teste (sugestão: gerador de post LinkedIn ou similar leve, baixo consumo de tokens)
-7. Rodar o squad com input trivial
-8. Durante a execução, observar:
-   - Estrutura de pastas criada pelo `init`
-   - Conteúdo de `state.json` em tempo real
-   - Comportamento dos checkpoints na prática
-   - Servir o dashboard com `npx serve squads/<nome>/dashboard` e abrir `localhost:3000`
-9. Fazer primeiro commit ao final, mensagem "Initial spike: opensquad platform validation"
+**Estrutura de arquivos de um squad:**
 
-**Critério de sucesso do spike**: ao final, o usuário consegue descrever em uma página: (a) como o state.json é estruturado, (b) como o checkpoint pausa o fluxo, (c) quanto contexto o Arquiteto consome, (d) se o dashboard renderizou corretamente.
+```
+squads/{name}/
+  squad.yaml                        — definição (code, name, icon, agents, pipeline.steps)
+  agents/{id}.agent.md              — frontmatter: name, role, icon + persona em markdown
+  pipeline/steps/{id}.md            — frontmatter: agent, outputFile, execution + prompt com {{input}}
+  pipeline/steps/{id}.md            — checkpoint: frontmatter type: checkpoint, message + instruções
+  state.json                        — estado da run ativa (removido ao concluir)
+  output/{YYYY-MM-DD-HHMMSS}/v1/    — output versionado por timestamp
+  output/{timestamp}/state.json     — cópia permanente do state ao concluir
+```
+
+**Ciclo de vida do status no state.json:**
+- Execução normal e pausa no checkpoint: `running` (não muda para "paused")
+- Após aprovação: `completed` + campo `completedAt` adicionado
+
+**Estrutura do state.json:**
+```json
+{
+  "squad": "nome-do-squad",
+  "status": "running | completed",
+  "step": { "current": N, "total": N, "label": "id-do-step" },
+  "agents": [{ "id": "", "name": "", "icon": "", "status": "done", "desk": { "col": 1, "row": 1 } }],
+  "handoff": { "from": "agente", "to": "user", "message": "...", "completedAt": "ISO8601" },
+  "startedAt": "ISO8601",
+  "updatedAt": "ISO8601",
+  "completedAt": "ISO8601"
+}
+```
+
+**Checkpoint:** exibe delimitador `✋ CHECKPOINT` no terminal, pausa aguardando resposta. Resposta `1` aprova, texto descritivo solicita ajuste.
+
+**Dashboard:** roda em `localhost:5174` via `npx opensquad dashboard`. Detecta squads automaticamente via squad-watcher. Interface Phaser com pixel art.
+
+**Restrição crítica:** o Antigravity não suporta subagentes paralelos. Todo o pipeline BPM deve ser serial e inline.
+
+**Consumo de tokens:** não mensurável diretamente no Antigravity. Pendência para observação empírica nos agentes BPM reais.
+
+## Próxima ação concreta: Spike 2, Geração BPMN
+
+Objetivo: validar que conseguimos produzir XML BPMN 2.0 válido a partir de um JSON de processo simples, dentro de um squad opensquad.
+
+O que precisamos responder ao final do Spike 2:
+- Um LLM consegue gerar XML BPMN 2.0 sintaticamente válido em uma única chamada, dado um JSON de processo simples?
+- Qual é o limite prático de complexidade antes de o XML começar a apresentar erros estruturais?
+- O bpmn-auto-layout (bpmn.io) ou elk.js consegue receber esse XML e renderizar sem coordenadas manuais?
+
+Sequência sugerida para delegar ao Gemini:
+
+1. Criar manualmente um JSON de processo fictício simples (3 a 5 atividades, 1 gateway, 2 raias) como fixture de teste
+2. Criar um squad `spike-bpmn` com um único agente Modelador, cujo step recebe o JSON e retorna XML BPMN 2.0
+3. Rodar o squad com o JSON fixture como input
+4. Salvar o XML gerado e validá-lo com uma ferramenta online (exemplo: bpmn.io/toolkit/bpmn-js) ou script Python com biblioteca `lxml`
+5. Se válido, testar o auto-layout via script Python com bpmn-auto-layout ou elk.js
+6. Registrar: o XML foi válido na primeira tentativa? Quantas correções foram necessárias?
+
+**Critério de sucesso:** XML BPMN 2.0 válido gerado pelo agente, renderizável no bpmn.io sem edição manual de coordenadas.
 
 ## Regras de estilo invioláveis
 
