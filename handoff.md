@@ -41,6 +41,24 @@ Adotamos abordagem híbrida: **Spike-Driven Discovery (XP)** seguida de **Walkin
 
 ## Estado atual do projeto (2026-05-14)
 
+**Spike 3 concluído.** Arquivos em `squads/spike-elicitacao/`. Output em `squads/spike-elicitacao/output/2026-05-14-151200/v1/`.
+
+### O que aprendemos no Spike 3: Ingestão de Entrevista
+
+**Pergunta 1: O agente consegue identificar atores, eventos, atividades, regras de negócio e sistemas a partir de uma transcrição não estruturada?**
+Sim. O agente Elicitador identificou corretamente 7 atores humanos/organizacionais, 15 atividades, 3 eventos (1 start, 2 end), 4 gateways exclusivos, 2 sistemas e 4 regras de negócio. Nenhuma entidade inventada. Todas rastreáveis à transcrição.
+
+**Pergunta 2: O JSON de saída é compatível com o schema que o agente Modelador espera?**
+Sim. O schema definido no step (`atores`, `atividades`, `eventos`, `gateways`, `sistemas`, `regras_de_negocio`, `observacoes`) é o suficiente para o Modelador gerar sequenceFlows e lanes. O agente necessitou de uma rodada de ajuste (v2) para corrigir: duplicidade estrutural do SAP, end event faltante no caminho de orçamento indisponível, e regra de negócio sobre três cotações.
+
+**Pergunta 3: Qual o nível de ruído tolerável?**
+Não testado neste spike. A transcrição era limpa e estruturada. Ruído real (interrupções, contradições, vocabulário coloquial) será testado em sprint posterior quando houver transcrição de entrevista real.
+
+**Decisão metodológica pendente para o Spike 4:**
+O SAP aparece em dois arrays (`atores` com tipo "sistema" e `sistemas`). O agente Modelador vai precisar de uma convenção explícita: SAP terá lane própria no BPMN ou será apenas atributo de atividade? A recomendação é tratar sistemas automatizados (ativ-09, ativ-14) como service tasks dentro da lane do ator humano que os dispara, sem lane SAP separada. Isso simplifica o layout e é compatível com o padrão BPMN 2.0 para automação.
+
+**Caminho aberto após ativ-13 (resolver divergência):** lacuna da transcrição original, não erro do agente. O entrevistado não especificou o que acontece após resolução de divergência na entrega. Precisa ser levantado em entrevista real.
+
 **Spike 2 concluído.** Arquivos em `squads/spike-bpmn/`. Output em `squads/spike-bpmn/output/2026-05-14-173000/v1/`.
 
 ### O que aprendemos no Spike 2: Geração BPMN
@@ -104,24 +122,27 @@ squads/{name}/
 
 **Consumo de tokens:** não mensurável diretamente no Antigravity. Pendência para observação empírica nos agentes BPM reais.
 
-## Próxima ação concreta: Spike 3, Ingestão de Entrevista
+## Próxima ação concreta: Spike 4, Modelador AS-IS
 
-Objetivo: validar que o agente de Elicitação (BABOK) consegue extrair entidades estruturadas de uma transcrição de entrevista real ou simulada e produzir o JSON que alimenta o agente Modelador.
+Objetivo: validar que o agente Modelador consegue transformar o JSON de elicitação (`elicitacao.json`) em XML BPMN 2.0 válido, com lanes por ator, gateways, sequenceFlows e events corretamente posicionados.
 
-O que precisamos responder ao final do Spike 3:
-- O agente consegue identificar atores, eventos, atividades, regras de negócio e sistemas a partir de uma transcrição não estruturada?
-- O JSON de saída é compatível com o schema que o agente Modelador espera como input?
-- Qual é o nível de ruído tolerável na transcrição antes de o agente falhar ou alucinar entidades?
+O que precisamos responder ao final do Spike 4:
+- O agente gera XML BPMN 2.0 válido a partir do JSON de elicitação, sem halucinar elementos não presentes no JSON?
+- As lanes correspondem corretamente aos atores do processo?
+- Os gateways exclusivos e seus condicionais estão representados no XML?
+- O XML passa validação no bpmn.io e no Bizagi Modeler 4.3?
+
+Decisões de design a incorporar no prompt do Modelador antes de rodar:
+1. Sistemas automatizados (ator_responsavel com tipo "sistema" no JSON) devem ser modelados como serviceTask dentro da lane do ator humano que os dispara, sem lane separada para o SAP.
+2. O caminho após `ativ-13` (resolver divergência) não está definido na transcrição. O agente deve gerar um endEvent intermediário para esse caminho, com label "Divergência resolvida (fluxo indefinido)", em vez de deixar o sequenceFlow em aberto.
 
 Sequência sugerida para delegar ao Gemini:
 
-1. Criar uma transcrição de entrevista fictícia simples (10 a 15 turnos de fala, processo de aprovação de compra ou similar)
-2. Criar um squad `spike-elicitacao` com um único agente Elicitador, cujo step recebe a transcrição e retorna JSON estruturado
-3. Rodar o squad com a transcrição como input
-4. Validar manualmente se o JSON de saída é compatível com o schema do fixture do Spike 2
-5. Registrar: quantas entidades foram identificadas corretamente? Houve alucinações?
-
-**Critério de sucesso:** JSON de saída compatível com o schema do agente Modelador, sem entidades inventadas não presentes na transcrição.
+1. Criar o squad `spike-modelador` com um agente Modelador, cujo step recebe o `elicitacao.json` do Spike 3 como input e retorna XML BPMN 2.0
+2. Rodar o squad com o conteúdo do `elicitacao.json` como input
+3. Salvar o output como `aprovacao-compra-as-is.bpmn`
+4. Importar no bpmn.io para validação visual
+5. Registrar: lanes geradas, gateways posicionados, presença de setas (BPMNEdge), erros de parsing
 
 ## Regras de estilo invioláveis
 

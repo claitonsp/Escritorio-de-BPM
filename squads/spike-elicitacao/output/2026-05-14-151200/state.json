@@ -1,0 +1,23 @@
+{
+  "squad": "spike-elicitacao",
+  "status": "completed",
+  "step": { "current": 2, "total": 2, "label": "02-checkpoint" },
+  "agents": [
+    {
+      "id": "elicitador",
+      "name": "Elicitador BABOK",
+      "icon": "🧩",
+      "status": "done",
+      "desk": { "col": 1, "row": 1 }
+    }
+  ],
+  "handoff": {
+    "from": "elicitador",
+    "to": null,
+    "message": "Elicitação concluída com sucesso.",
+    "completedAt": "2026-05-14T15:12:45Z"
+  },
+  "startedAt": "2026-05-14T15:12:00Z",
+  "updatedAt": "2026-05-14T15:21:17Z",
+  "completedAt": "2026-05-14T15:21:17Z"
+}

@@ -1,0 +1,9 @@
+code: spike-elicitacao
+name: Spike Elicitação BABOK
+icon: 🔍
+agents:
+  - elicitador
+pipeline:
+  steps:
+    - 01-elicitacao
+    - 02-checkpoint
