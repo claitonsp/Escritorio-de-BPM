@@ -186,12 +186,39 @@ Output: `output/2026-05-14-000001/v1/processo-tobe.bpmn`, validado no bpmn.io.
 - ev-05, ev-06 (novos), ev-04 removido
 - Supervisor mantido: segregação de deveres
 
-## Próxima ação: bpmn-js (Alternativa B)
+## Próxima ação: edge-injector.js (setas no diagrama)
 
-Layout entregável a cliente requer substituição do par bpmn-auto-layout + di-injector por bpmn-js via Node.js (gera DI completo com lanes sem sobreposição e BPMNEdge com setas). Sequência:
-1. Investigar bpmn-js em Node.js sem browser (jsdom ou puppeteer)
-2. Escrever `bpmn-layout.js` substituindo o par atual
-3. Validar com processo-as-is.bpmn e processo-tobe.bpmn
+**Problema:** bpmn-auto-layout gera `BPMNShape` para nós mas NÃO gera `BPMNEdge` para sequenceFlows. Sem BPMNEdge no BPMNPlane, bpmn.io não renderiza setas de conexão.
+
+**Solução imediata (sem bpmn-js):** escrever `edge-injector.js` em Node.js puro, sem dependências externas, seguindo o mesmo padrão do `di-injector.js` já existente.
+
+**Lógica do edge-injector.js:**
+1. Ler o arquivo BPMN com layout (saída do bpmn-auto-layout, que já tem BPMNShape com dc:Bounds)
+2. Extrair posições de todos os nós via regex nos BPMNShape: `id`, `x`, `y`, `width`, `height`
+3. Extrair todos os sequenceFlows via regex: `id`, `sourceRef`, `targetRef`
+4. Para cada sequenceFlow, calcular dois waypoints:
+   - Ponto de saída: centro-baixo do elemento de origem → `x + width/2`, `y + height`
+   - Ponto de entrada: centro-cima do elemento de destino → `x + width/2`, `y`
+5. Gerar `<bpmndi:BPMNEdge>` com dois `<di:waypoint>` para cada sequenceFlow
+6. Injetar esses BPMNEdge no BPMNPlane, após os BPMNShape existentes
+
+**Resultado esperado:** setas retas conectando todos os elementos. Não serão roteadas com curvas (isso é bpmn-js), mas todas as conexões estarão visíveis e corretas para validação e apresentação.
+
+**Arquivo a criar:** `squads/escritorio-bpm-as-is/scripts/edge-injector.js`
+
+**Forma de uso (mesma convenção do di-injector):**
+```
+node squads/escritorio-bpm-as-is/scripts/edge-injector.js <input.bpmn> <output.bpmn>
+```
+
+**Pipeline completo após a correção:**
+```
+bpmn-auto-layout → di-injector.js → edge-injector.js → arquivo final com shapes de nós + lanes + setas
+```
+
+**Validação:** abrir o arquivo final no bpmn.io e confirmar que todas as setas estão presentes conectando os elementos corretamente.
+
+**Nota sobre bpmn-js (Alternativa B):** continua sendo a solução definitiva para setas roteadas com curvas e lanes sem sobreposição. Endereçar após o edge-injector estar funcionando.
 
 ## Regras de estilo invioláveis
 
