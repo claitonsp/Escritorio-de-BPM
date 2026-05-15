@@ -122,27 +122,76 @@ squads/{name}/
 
 **Consumo de tokens:** não mensurável diretamente no Antigravity. Pendência para observação empírica nos agentes BPM reais.
 
-## Próxima ação concreta: Spike 4, Modelador AS-IS
+## Spike 4 concluído. Arquivos em `squads/spike-modelador/`. Output em `squads/spike-modelador/output/`.
 
-Objetivo: validar que o agente Modelador consegue transformar o JSON de elicitação (`elicitacao.json`) em XML BPMN 2.0 válido, com lanes por ator, gateways, sequenceFlows e events corretamente posicionados.
+### O que aprendemos no Spike 4: Modelador AS-IS
 
-O que precisamos responder ao final do Spike 4:
-- O agente gera XML BPMN 2.0 válido a partir do JSON de elicitação, sem halucinar elementos não presentes no JSON?
-- As lanes correspondem corretamente aos atores do processo?
-- Os gateways exclusivos e seus condicionais estão representados no XML?
-- O XML passa validação no bpmn.io e no Bizagi Modeler 4.3?
+**Pergunta 1: O agente gera XML BPMN 2.0 válido sem alucinar elementos?**
+Sim. 23 nós (1 startEvent, 4 endEvents, 15 tarefas, 4 gateways) e 24 sequenceFlows gerados sem invenção. Todos rastreáveis ao elicitacao.json.
 
-Decisões de design a incorporar no prompt do Modelador antes de rodar:
-1. Sistemas automatizados (ator_responsavel com tipo "sistema" no JSON) devem ser modelados como serviceTask dentro da lane do ator humano que os dispara, sem lane separada para o SAP.
-2. O caminho após `ativ-13` (resolver divergência) não está definido na transcrição. O agente deve gerar um endEvent intermediário para esse caminho, com label "Divergência resolvida (fluxo indefinido)", em vez de deixar o sequenceFlow em aberto.
+**Pergunta 2: As lanes correspondem corretamente aos atores?**
+Sim. 7 lanes geradas na ordem correta. SAP modelado como serviceTask dentro da lane do ator humano que o dispara (ativ-09 no Gerente, ativ-14 no Almoxarifado), sem lane própria, conforme decisão do Spike 3.
 
-Sequência sugerida para delegar ao Gemini:
+**Pergunta 3: Os gateways e condicionais estão corretos?**
+Sim. 4 exclusiveGateway com conditionExpression em todas as saídas. ev-04 "Divergência resolvida (fluxo indefinido)" gerado conforme instrução.
 
-1. Criar o squad `spike-modelador` com um agente Modelador, cujo step recebe o `elicitacao.json` do Spike 3 como input e retorna XML BPMN 2.0
-2. Rodar o squad com o conteúdo do `elicitacao.json` como input
-3. Salvar o output como `aprovacao-compra-as-is.bpmn`
-4. Importar no bpmn.io para validação visual
-5. Registrar: lanes geradas, gateways posicionados, presença de setas (BPMNEdge), erros de parsing
+**Pergunta 4: O XML passa no bpmn.io e no Bizagi?**
+Parcialmente. bpmn.io renderizou corretamente após adição manual de BPMNShape para as 7 lanes. Bizagi não renderizou em nenhuma tentativa (causa não identificada, não bloqueante para o walking skeleton).
+
+**Descoberta técnica crítica sobre DI:**
+O agente Modelador não gera DI (BPMNShape/BPMNEdge). O bpmn-auto-layout 1.3.0 gera BPMNShape para nós mas não para lanes. Sem shapes de lane no BPMNPlane, ferramentas não renderizam. A solução atual é adicionar BPMNShape de lanes via script ou manualmente. A solução definitiva (bpmn-js via Node.js gerando DI completo) continua como refinamento posterior.
+
+**Descoberta técnica sobre bpmn-auto-layout 1.3.0:**
+API mudou: `layoutProcess` é função direta exportada, não método de classe. Usar `const { layoutProcess } = require('bpmn-auto-layout')` em vez de `new BpmnAutoLayout()`.
+
+**Observação sobre encoding:**
+Labels com caracteres UTF-8 (ã, ç, é) aparecem corrompidos no SVG exportado pelo bpmn.io. O XML BPMN original está correto. É artefato do export SVG do bpmn.io, não do agente.
+
+## Walking Skeleton AS-IS concluído (2026-05-14)
+
+Squad `escritorio-bpm-as-is` rodou de ponta a ponta. Pipeline: Elicitador → elicitacao.json → Modelador → processo-as-is.bpmn → bpmn-auto-layout → DI Injector → processo-as-is-final.bpmn. Diagrama renderizou no bpmn.io com 7 lanes, 4 gateways, 15 atividades, serviceTasks e ev-04.
+
+**Correção incorporada vs. Spike 4:** gw-01 (Valor da compra) movido para lane do Supervisor, onde a decisão ocorre.
+
+**Limitação identificada: sobreposição de lanes no DI Injector.** O bpmn-auto-layout coloca todos os elementos em coluna única ignorando lanes. Elementos de atores diferentes ficam intercalados no eixo Y. O DI Injector calcula bounds por lane a partir das posições reais, causando sobreposição (lane do Gerente engolindo as demais). Diagrama renderizável mas não entregável a cliente.
+
+**Resolução definitiva:** substituir bpmn-auto-layout + DI Injector por bpmn-js via Node.js, que gera DI completo com lanes sem sobreposição e BPMNEdge (setas). Esta é a Alternativa B definida desde o Spike 2.
+
+**Bizagi:** ainda não renderiza. Aceito como não bloqueante. bpmn.io é a ferramenta de validação padrão.
+
+## Pipeline completo (2026-05-15)
+
+Todos os quatro agentes implementados e validados. Squad `escritorio-bpm-as-is` com 8 steps, pipeline serial.
+
+### Agente 3: Auditor (CBOK + Lean Six Sigma + ISO 9001)
+
+Arquivos: `agents/auditor.agent.md`, `pipeline/steps/05-auditor.md`, `pipeline/steps/06-checkpoint-auditoria.md`.
+
+Output: `output/2026-05-14-000001/v1/diagnostico-as-is.json` com 10 achados estruturados (4 alta prioridade, 4 média, 2 baixa).
+
+**Decisão incorporada durante a auditoria:** gw-01 corrigido no AS-IS. Caminho "Até R$ 5.000" vai direto para ativ-05 sem passar pelo Gerente. Confirmado pelo usuário. elicitacao.json, processo-as-is.bpmn e diagnostico-as-is.json atualizados.
+
+### Agente 4: TO-BE (Designer de Solução)
+
+Arquivos: `agents/tobe.agent.md`, `pipeline/steps/07-tobe.md`, `pipeline/steps/08-checkpoint-tobe.md`.
+
+Output: `output/2026-05-14-000001/v1/processo-tobe.bpmn`, validado no bpmn.io.
+
+**Mudanças do AS-IS para o TO-BE:**
+- ativ-06: userTask convertida para serviceTask (automação SAP, ach-06)
+- ativ-16 (nova): "Registrar comparativo de cotações e selecionar fornecedor" (ISO 9001 cl. 8.4.1, ach-07)
+- gw-05 (novo): "Resolução da divergência" com 3 saídas após ativ-13 (ach-02)
+- ativ-17 (nova): "Devolver mercadoria ao fornecedor" (Almoxarifado)
+- ativ-18 (nova): "Escalar divergência para Diretoria" (Gerente de Compras)
+- ev-05, ev-06 (novos), ev-04 removido
+- Supervisor mantido: segregação de deveres
+
+## Próxima ação: bpmn-js (Alternativa B)
+
+Layout entregável a cliente requer substituição do par bpmn-auto-layout + di-injector por bpmn-js via Node.js (gera DI completo com lanes sem sobreposição e BPMNEdge com setas). Sequência:
+1. Investigar bpmn-js em Node.js sem browser (jsdom ou puppeteer)
+2. Escrever `bpmn-layout.js` substituindo o par atual
+3. Validar com processo-as-is.bpmn e processo-tobe.bpmn
 
 ## Regras de estilo invioláveis
 

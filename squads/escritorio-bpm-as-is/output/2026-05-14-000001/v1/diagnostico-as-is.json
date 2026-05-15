@@ -1,0 +1,141 @@
+{
+  "processo": "Processo de Aprovação de Compra",
+  "resumo_executivo": "O processo apresenta sete handoffs entre atores, criando múltiplos pontos de ruptura sem mecanismos de monitoramento ou SLA definidos. O achado mais crítico é o caminho de divergência na entrega (gw-04 → ativ-13 → ev-04) que termina em estado indefinido, violando diretamente ISO 9001 cl. 8.7 sobre controle de saídas não conformes. O gateway gw-01, que deveria diferenciar o tratamento de compras por valor, converge ambos os caminhos na mesma atividade do Gerente de Compras, sugerindo que a lógica de aprovação por alçada não está completamente especificada no processo atual. A automação de ativ-09 e ativ-14 via SAP é um ponto positivo que reduz erros manuais nos momentos de notificação e geração de documento de pagamento.",
+  "metricas_estruturais": {
+    "total_atividades": 15,
+    "atividades_manuais": 13,
+    "atividades_automaticas": 2,
+    "total_handoffs": 7,
+    "total_gateways": 4,
+    "caminhos_indefinidos": 1,
+    "atores_internos": 6,
+    "atores_externos": 1
+  },
+  "achados": [
+    {
+      "id": "ach-01",
+      "framework": "CBOK",
+      "categoria": "lacuna_especificacao",
+      "descricao": "O modelo AS-IS inicial representava gw-01 com ambos os caminhos convergindo em ativ-03 (Gerente de Compras). Corrigido após confirmação do usuário: caminho 'Até R$ 5.000' vai diretamente para ativ-05 (cotações), sem passar por ativ-03. O Supervisor tem alçada de aprovação plena para compras de baixo valor, sem verificação de orçamento pelo Gerente. Caminho 'Acima de R$ 5.000' mantém o fluxo para ativ-03. O modelo BPMN e o elicitacao.json foram corrigidos. Este achado documenta uma lacuna de especificação que existia no modelo e foi resolvida nesta etapa.",
+      "elementos_relacionados": ["gw-01", "ativ-02", "ativ-03", "ativ-05", "rn-01"],
+      "impacto_potencial": "Modelo corrigido. Sem impacto residual no processo atual. No TO-BE, a bifurcação real do gw-01 abre oportunidade de fast-track para compras de baixo valor com fornecedores homologados.",
+      "prioridade": "alta",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "Confirmado diretamente pelo usuário. O modelo foi atualizado para refletir o comportamento real do processo.",
+      "recomendacao": "No TO-BE, avaliar se o caminho 'Até R$ 5.000' pode ter um fast-track adicional para fornecedores já homologados: eliminando a obrigatoriedade das três cotações para compras recorrentes de baixo valor com histórico de conformidade."
+    },
+    {
+      "id": "ach-02",
+      "framework": "ISO9001",
+      "categoria": "nao_conformidade",
+      "descricao": "O caminho de não-conformidade gw-04 → ativ-13 → ev-04 termina em estado indefinido ('Fluxo indefinido — divergência na entrega não especificada'). O processo detecta a divergência na nota fiscal (gw-04), delega a resolução ao Gerente de Compras (ativ-13), mas não define o desfecho: o fluxo não retorna ao caminho normal (ativ-12 → ativ-14) nem encerra com decisão documentada. ISO 9001 cl. 8.7 exige que a organização defina ação sobre saídas não conformes.",
+      "elementos_relacionados": ["gw-04", "ativ-13", "ev-04"],
+      "impacto_potencial": "Compras com divergência na entrega podem ficar sem resolução formal, gerando estoques incorretos, pagamentos indevidos ou disputas com fornecedores sem evidência documentada.",
+      "prioridade": "alta",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "A lacuna é documentada explicitamente nas observacoes do elicitacao.json e presente na estrutura do BPMN como endEvent intermediário.",
+      "recomendacao": "No TO-BE, modelar ativ-13 com três saídas possíveis: (1) divergência resolvida — retorna para ativ-12 (entrada no estoque), (2) devolução ao fornecedor — nova atividade com endEvent 'Mercadoria devolvida', (3) impasse — escalada com endEvent 'Caso encaminhado para jurídico/diretoria'. Coletar desfechos reais em entrevista de aprofundamento."
+    },
+    {
+      "id": "ach-03",
+      "framework": "CBOK",
+      "categoria": "controle",
+      "descricao": "Nenhuma atividade de monitoramento de prazo, SLA ou alerta de vencimento foi identificada no processo. A rn-04 menciona 'pagamento dentro do prazo do contrato', mas não há gate de verificação de prazo entre ativ-14 (geração do documento de pagamento) e ativ-15 (quitar pagamento). O processo não captura quando um prazo está em risco nem escala para tratamento preventivo.",
+      "elementos_relacionados": ["ativ-15", "rn-04", "ev-02"],
+      "impacto_potencial": "Atrasos no pagamento com risco de multa contratual, perda de desconto por pontualidade ou deterioração do relacionamento com fornecedores estratégicos.",
+      "prioridade": "alta",
+      "confiabilidade": "baixa",
+      "justificativa_confiabilidade": "A ausência de SLA é estrutural no processo. O impacto financeiro depende de dados quantitativos (volume de compras, taxas de multa, histórico de atrasos) não fornecidos na entrevista.",
+      "recomendacao": "No TO-BE, incluir evento de timer após ativ-14: se prazo de vencimento - N dias sem ativ-15 concluída, disparar alerta automático ao Financeiro e ao Gerente de Compras. Coletar prazo médio de pagamento e frequência de atrasos em entrevista de aprofundamento."
+    },
+    {
+      "id": "ach-04",
+      "framework": "Lean",
+      "categoria": "desperdicio_espera",
+      "descricao": "ativ-10 (Confirmar prazo de entrega pelo Fornecedor) é uma atividade passiva via e-mail (sis-02) sem timeout, sem escalada e sem tratamento de não-resposta definido. O processo fica bloqueado aguardando resposta externa sem mecanismo de retomada.",
+      "elementos_relacionados": ["ativ-10", "sis-02", "ator-04"],
+      "impacto_potencial": "Lead time do processo é controlado pelo Fornecedor, não pela organização. Uma não-resposta pode bloquear indefinidamente a compra aprovada.",
+      "prioridade": "media",
+      "confiabilidade": "media",
+      "justificativa_confiabilidade": "A dependência de resposta externa via e-mail é estrutural. O tempo médio de espera e a frequência de não-resposta requerem coleta de dados históricos.",
+      "recomendacao": "No TO-BE, incluir evento de timer em ativ-10: após N dias sem confirmação, escalar para o Gerente de Compras com opção de contato direto ou troca de fornecedor. Considerar confirmação automatizada via portal de fornecedores integrado ao SAP."
+    },
+    {
+      "id": "ach-05",
+      "framework": "Lean",
+      "categoria": "desperdicio_superprocessamento",
+      "descricao": "A rn-02 exige obrigatoriamente três cotações para todas as compras, independentemente do valor. Para compras de baixo valor (≤ R$ 5.000, conforme rn-01), a obrigatoriedade de três cotações pode gerar esforço desproporcional ao benefício obtido. O processo não prevê exceção ou fast-track para itens recorrentes, fornecedores homologados ou compras de emergência.",
+      "elementos_relacionados": ["ativ-05", "rn-02", "rn-01", "gw-01"],
+      "impacto_potencial": "Tempo de ciclo elevado para compras simples. Desmotivação do Gerente de Compras para compras rotineiras de baixo valor.",
+      "prioridade": "media",
+      "confiabilidade": "media",
+      "justificativa_confiabilidade": "A regra rn-02 é explícita. O impacto depende do volume de compras de baixo valor e do tempo médio para obter três cotações, dados não disponíveis.",
+      "recomendacao": "No TO-BE, criar exceção na rn-02: compras de fornecedor homologado com histórico de conformidade e valor ≤ R$ 5.000 dispensam cotação múltipla (compra direta com justificativa registrada). Validar com compliance e jurídico os limites aceitáveis."
+    },
+    {
+      "id": "ach-06",
+      "framework": "Lean",
+      "categoria": "desperdicio_movimento",
+      "descricao": "ativ-06 (Validar cadastro do fornecedor) é executada manualmente pelo Gerente de Compras via SAP após a seleção do fornecedor em ativ-05. Essa verificação poderia ser automatizada como serviceTask no momento em que o fornecedor é identificado, eliminando um passo manual sequencial.",
+      "elementos_relacionados": ["ativ-06", "gw-03", "ativ-07", "sis-01"],
+      "impacto_potencial": "Tempo de ciclo adicional para cada compra que requer validação manual. Risco de erros humanos na verificação de cadastro.",
+      "prioridade": "media",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "A atividade é userTask com sistema SAP disponível. A automatizabilidade é estruturalmente evidente. A viabilidade técnica depende das capacidades da versão do SAP em uso.",
+      "recomendacao": "No TO-BE, converter ativ-06 para serviceTask automatizada no SAP: ao selecionar o fornecedor em ativ-05, o sistema verifica automaticamente o status de cadastro. Se não cadastrado, dispara ativ-07 automaticamente com pré-preenchimento dos dados do fornecedor."
+    },
+    {
+      "id": "ach-07",
+      "framework": "ISO9001",
+      "categoria": "rastreabilidade",
+      "descricao": "O processo não registra formalmente a decisão de seleção do fornecedor. A rn-03 ('critério de escolha: menor preço') define o critério, mas entre ativ-05 (pedir cotações) e ativ-08 (emitir pedido de compra) não há atividade de comparação e registro da decisão. ISO 9001 cl. 8.4.1 exige critérios de seleção e avaliação de fornecedores e evidência de que esses critérios foram aplicados.",
+      "elementos_relacionados": ["ativ-05", "ativ-06", "ativ-08", "rn-03"],
+      "impacto_potencial": "Ausência de evidência da aplicação do critério de menor preço. Em auditoria, não há registro de quais cotações foram recebidas, comparadas e rejeitadas.",
+      "prioridade": "alta",
+      "confiabilidade": "media",
+      "justificativa_confiabilidade": "A ausência da atividade de registro de decisão é estrutural no JSON. Se o SAP registra isso automaticamente durante ativ-08, o achado perde relevância — requer verificação.",
+      "recomendacao": "No TO-BE, incluir atividade 'Registrar comparativo de cotações e justificativa de escolha' entre ativ-05 e ativ-08, com outputFile no SAP. Alternativamente, verificar se o módulo de compras do SAP já gera esse registro automaticamente ao emitir o pedido."
+    },
+    {
+      "id": "ach-08",
+      "framework": "CBOK",
+      "categoria": "handoff",
+      "descricao": "O processo apresenta sete handoffs entre atores distintos no caminho principal: Solicitante → Supervisor → Gerente de Compras → Setor de Cadastro → Gerente de Compras → Fornecedor → Almoxarifado → Financeiro. Cada handoff é um ponto de ruptura potencial onde informação pode ser perdida, mal interpretada ou atrasada. O CBOK v4.0 (cap. 4) classifica handoffs excessivos como indicador de processo candidato a redesenho.",
+      "elementos_relacionados": ["ativ-01", "ativ-02", "ativ-03", "ativ-07", "ativ-08", "ativ-10", "ativ-11", "ativ-15"],
+      "impacto_potencial": "Lead time elevado proporcional ao número de handoffs. Cada transferência adiciona tempo de fila implícito não capturado no processo atual.",
+      "prioridade": "media",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "Os sete handoffs são deriváveis diretamente da sequência de atores nas atividades do JSON.",
+      "recomendacao": "No TO-BE, avaliar consolidação do handoff Setor de Cadastro → Gerente de Compras: se ativ-07 for automática (serviceTask SAP), elimina-se um handoff. Avaliar também se ativ-02 (Supervisor) pode ser eliminada para compras recorrentes de fornecedores homologados."
+    },
+    {
+      "id": "ach-09",
+      "framework": "ISO9001",
+      "categoria": "rastreabilidade",
+      "descricao": "ativ-10 (Confirmar prazo de entrega) é realizada pelo Fornecedor via e-mail (sis-02). O registro dessa confirmação não é especificado: não há indicação de que o e-mail é anexado ao pedido no SAP ou registrado de qualquer forma. ISO 9001 cl. 8.4 exige evidência das comunicações com fornecedores externos e dos acordos sobre requisitos.",
+      "elementos_relacionados": ["ativ-10", "sis-02", "ator-04", "sis-01"],
+      "impacto_potencial": "Em caso de disputa sobre prazo acordado, a organização não tem evidência documental da confirmação do fornecedor.",
+      "prioridade": "media",
+      "confiabilidade": "baixa",
+      "justificativa_confiabilidade": "A ausência de registro é inferida da descrição da atividade. É possível que exista uma prática de arquivamento de e-mails não descrita na entrevista.",
+      "recomendacao": "No TO-BE, integrar confirmação de prazo ao SAP: fornecedor confirma via portal ou o Gerente de Compras registra a confirmação no pedido de compra SAP após receber o e-mail. Verificar em entrevista de aprofundamento se há prática atual de registro."
+    },
+    {
+      "id": "ach-10",
+      "framework": "CBOK",
+      "categoria": "automacao_potencial",
+      "descricao": "ativ-09 (Enviar notificação automática ao fornecedor) e ativ-14 (Gerar documento de pagamento automaticamente) já são serviceTask via SAP, demonstrando maturidade de automação em pontos estratégicos do processo. Esses dois pontos eliminam erros manuais de comunicação e geração de documentos financeiros.",
+      "elementos_relacionados": ["ativ-09", "ativ-14", "sis-01"],
+      "impacto_potencial": "Positivo: redução de erros em comunicação com fornecedor e em documentação financeira.",
+      "prioridade": "baixa",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "Ambas as atividades são serviceTask no JSON com ator_responsavel sis-01, confirmando automação existente.",
+      "recomendacao": "Manter e expandir o padrão de automação via SAP para ativ-06 (validação de cadastro) e para geração de alertas de prazo em ativ-15. Documentar as automações existentes como referência de maturidade para o relatório TO-BE."
+    }
+  ],
+  "observacoes_metodologicas": [
+    "Todos os achados são baseados em uma única entrevista transcrita. Dados quantitativos como tempo de ciclo, volume de compras por mês, frequência de divergências e custo de retrabalho não estão disponíveis. Achados com confiabilidade 'baixa' requerem coleta de dados antes de priorização definitiva.",
+    "Recomenda-se entrevista de aprofundamento com foco em: (1) desfechos reais de ativ-13 quando ocorre divergência na entrega, (2) frequência de compras por faixa de valor para avaliar impacto de rn-02, (3) verificação das capacidades do módulo SAP para automatização de ativ-06, (4) práticas atuais de arquivamento da confirmação de prazo do fornecedor.",
+    "O achado ach-01 (gw-01 sem bifurcação real) é o que mais impacta o design do TO-BE. A clarificação da lógica de aprovação por alçada deve ser obtida antes do início do redesenho do processo."
+  ]
+}

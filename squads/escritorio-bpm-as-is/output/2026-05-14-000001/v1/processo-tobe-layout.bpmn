@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" id="definitions_tobe" targetNamespace="http://escritorio-bpm/tobe">
+  <process id="proc_tobe" name="Processo de Aprovação de Compra — TO-BE" isExecutable="false">
+    <laneSet id="ls_01">
+      <lane id="lane-ator-01" name="Solicitante">
+        <flowNodeRef>ev-01</flowNodeRef>
+        <flowNodeRef>ativ-01</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-02" name="Supervisor">
+        <flowNodeRef>ativ-02</flowNodeRef>
+        <flowNodeRef>gw-01</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-03" name="Gerente de Compras">
+        <flowNodeRef>ativ-03</flowNodeRef>
+        <flowNodeRef>ativ-04</flowNodeRef>
+        <flowNodeRef>ativ-05</flowNodeRef>
+        <flowNodeRef>ativ-06</flowNodeRef>
+        <flowNodeRef>ativ-08</flowNodeRef>
+        <flowNodeRef>ativ-09</flowNodeRef>
+        <flowNodeRef>ativ-13</flowNodeRef>
+        <flowNodeRef>ativ-16</flowNodeRef>
+        <flowNodeRef>ativ-18</flowNodeRef>
+        <flowNodeRef>gw-02</flowNodeRef>
+        <flowNodeRef>gw-03</flowNodeRef>
+        <flowNodeRef>gw-05</flowNodeRef>
+        <flowNodeRef>ev-03</flowNodeRef>
+        <flowNodeRef>ev-06</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-05" name="Setor de Cadastro">
+        <flowNodeRef>ativ-07</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-04" name="Fornecedor">
+        <flowNodeRef>ativ-10</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-06" name="Almoxarifado">
+        <flowNodeRef>ativ-11</flowNodeRef>
+        <flowNodeRef>ativ-12</flowNodeRef>
+        <flowNodeRef>ativ-14</flowNodeRef>
+        <flowNodeRef>ativ-17</flowNodeRef>
+        <flowNodeRef>gw-04</flowNodeRef>
+        <flowNodeRef>ev-05</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-07" name="Financeiro">
+        <flowNodeRef>ativ-15</flowNodeRef>
+        <flowNodeRef>ev-02</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="ev-01" name="Necessidade de compra" />
+    <userTask id="ativ-01" name="Preencher formulário de requisição" />
+    <userTask id="ativ-02" name="Aprovar requisição" />
+    <exclusiveGateway id="gw-01" name="Valor da compra" />
+    <userTask id="ativ-03" name="Verificar disponibilidade de orçamento" />
+    <exclusiveGateway id="gw-02" name="Disponibilidade de orçamento" />
+    <userTask id="ativ-04" name="Devolver requisição com justificativa" />
+    <endEvent id="ev-03" name="Requisição devolvida (sem orçamento)" />
+    <userTask id="ativ-05" name="Pedir três cotações aos fornecedores" />
+    <userTask id="ativ-16" name="Registrar comparativo de cotações e selecionar fornecedor" />
+    <serviceTask id="ativ-06" name="Validar cadastro do fornecedor automaticamente" />
+    <exclusiveGateway id="gw-03" name="Fornecedor cadastrado" />
+    <userTask id="ativ-07" name="Incluir fornecedor no sistema" />
+    <userTask id="ativ-08" name="Emitir pedido de compra" />
+    <serviceTask id="ativ-09" name="Enviar notificação automática ao fornecedor" />
+    <userTask id="ativ-10" name="Confirmar prazo de entrega" />
+    <userTask id="ativ-11" name="Conferir nota fiscal contra pedido" />
+    <exclusiveGateway id="gw-04" name="Conferência da nota fiscal" />
+    <userTask id="ativ-12" name="Dar entrada no estoque" />
+    <userTask id="ativ-13" name="Resolver divergência na entrega" />
+    <exclusiveGateway id="gw-05" name="Resolução da divergência" />
+    <userTask id="ativ-17" name="Devolver mercadoria ao fornecedor" />
+    <userTask id="ativ-18" name="Escalar divergência para Diretoria" />
+    <serviceTask id="ativ-14" name="Gerar documento de pagamento automaticamente" />
+    <userTask id="ativ-15" name="Quitar pagamento" />
+    <endEvent id="ev-02" name="Pagamento efetuado" />
+    <endEvent id="ev-05" name="Mercadoria devolvida ao fornecedor" />
+    <endEvent id="ev-06" name="Caso escalado para Diretoria" />
+    <sequenceFlow id="sf-ev01-ativ01" sourceRef="ev-01" targetRef="ativ-01" />
+    <sequenceFlow id="sf-ativ01-ativ02" sourceRef="ativ-01" targetRef="ativ-02" />
+    <sequenceFlow id="sf-ativ02-gw01" sourceRef="ativ-02" targetRef="gw-01" />
+    <sequenceFlow id="sf-gw01-ativ05" name="Até R$ 5.000" sourceRef="gw-01" targetRef="ativ-05">
+      <conditionExpression xsi:type="tFormalExpression">Até R$ 5.000</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw01-ativ03" name="Acima de R$ 5.000" sourceRef="gw-01" targetRef="ativ-03">
+      <conditionExpression xsi:type="tFormalExpression">Acima de R$ 5.000</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-ativ03-gw02" sourceRef="ativ-03" targetRef="gw-02" />
+    <sequenceFlow id="sf-gw02-ativ04" name="Não" sourceRef="gw-02" targetRef="ativ-04">
+      <conditionExpression xsi:type="tFormalExpression">Não</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-ativ04-ev03" sourceRef="ativ-04" targetRef="ev-03" />
+    <sequenceFlow id="sf-gw02-ativ05" name="Sim" sourceRef="gw-02" targetRef="ativ-05">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-ativ05-ativ16" sourceRef="ativ-05" targetRef="ativ-16" />
+    <sequenceFlow id="sf-ativ16-ativ06" sourceRef="ativ-16" targetRef="ativ-06" />
+    <sequenceFlow id="sf-ativ06-gw03" sourceRef="ativ-06" targetRef="gw-03" />
+    <sequenceFlow id="sf-gw03-ativ07" name="Não" sourceRef="gw-03" targetRef="ativ-07">
+      <conditionExpression xsi:type="tFormalExpression">Não</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-ativ07-ativ08" sourceRef="ativ-07" targetRef="ativ-08" />
+    <sequenceFlow id="sf-gw03-ativ08" name="Sim" sourceRef="gw-03" targetRef="ativ-08">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-ativ08-ativ09" sourceRef="ativ-08" targetRef="ativ-09" />
+    <sequenceFlow id="sf-ativ09-ativ10" sourceRef="ativ-09" targetRef="ativ-10" />
+    <sequenceFlow id="sf-ativ10-ativ11" sourceRef="ativ-10" targetRef="ativ-11" />
+    <sequenceFlow id="sf-ativ11-gw04" sourceRef="ativ-11" targetRef="gw-04" />
+    <sequenceFlow id="sf-gw04-ativ12" name="Tudo certo" sourceRef="gw-04" targetRef="ativ-12">
+      <conditionExpression xsi:type="tFormalExpression">Tudo certo</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw04-ativ13" name="Divergência" sourceRef="gw-04" targetRef="ativ-13">
+      <conditionExpression xsi:type="tFormalExpression">Divergência</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-ativ13-gw05" sourceRef="ativ-13" targetRef="gw-05" />
+    <sequenceFlow id="sf-gw05-ativ12" name="Divergência resolvida" sourceRef="gw-05" targetRef="ativ-12">
+      <conditionExpression xsi:type="tFormalExpression">Divergência resolvida</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw05-ativ17" name="Devolução ao fornecedor" sourceRef="gw-05" targetRef="ativ-17">
+      <conditionExpression xsi:type="tFormalExpression">Devolução ao fornecedor</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw05-ativ18" name="Escalada para Diretoria" sourceRef="gw-05" targetRef="ativ-18">
+      <conditionExpression xsi:type="tFormalExpression">Escalada para Diretoria</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-ativ12-ativ14" sourceRef="ativ-12" targetRef="ativ-14" />
+    <sequenceFlow id="sf-ativ14-ativ15" sourceRef="ativ-14" targetRef="ativ-15" />
+    <sequenceFlow id="sf-ativ15-ev02" sourceRef="ativ-15" targetRef="ev-02" />
+    <sequenceFlow id="sf-ativ17-ev05" sourceRef="ativ-17" targetRef="ev-05" />
+    <sequenceFlow id="sf-ativ18-ev06" sourceRef="ativ-18" targetRef="ev-06" />
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_proc_tobe">
+    <bpmndi:BPMNPlane id="BPMNPlane_proc_tobe" bpmnElement="proc_tobe">
+      <bpmndi:BPMNShape id="ev-01_di" bpmnElement="ev-01">
+        <dc:Bounds x="57" y="52" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-01_di" bpmnElement="ativ-01">
+        <dc:Bounds x="25" y="170" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-02_di" bpmnElement="ativ-02">
+        <dc:Bounds x="25" y="310" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw-01_di" bpmnElement="gw-01" isMarkerVisible="true">
+        <dc:Bounds x="50" y="465" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-03_di" bpmnElement="ativ-03">
+        <dc:Bounds x="25" y="590" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw-02_di" bpmnElement="gw-02" isMarkerVisible="true">
+        <dc:Bounds x="50" y="745" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-04_di" bpmnElement="ativ-04">
+        <dc:Bounds x="25" y="870" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ev-03_di" bpmnElement="ev-03">
+        <dc:Bounds x="57" y="1032" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-05_di" bpmnElement="ativ-05">
+        <dc:Bounds x="25" y="1150" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-16_di" bpmnElement="ativ-16">
+        <dc:Bounds x="25" y="1290" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-06_di" bpmnElement="ativ-06">
+        <dc:Bounds x="25" y="1430" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw-03_di" bpmnElement="gw-03" isMarkerVisible="true">
+        <dc:Bounds x="50" y="1585" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-07_di" bpmnElement="ativ-07">
+        <dc:Bounds x="25" y="1710" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-08_di" bpmnElement="ativ-08">
+        <dc:Bounds x="25" y="1850" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-09_di" bpmnElement="ativ-09">
+        <dc:Bounds x="25" y="1990" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-10_di" bpmnElement="ativ-10">
+        <dc:Bounds x="25" y="2130" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-11_di" bpmnElement="ativ-11">
+        <dc:Bounds x="25" y="2270" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw-04_di" bpmnElement="gw-04" isMarkerVisible="true">
+        <dc:Bounds x="50" y="2425" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-12_di" bpmnElement="ativ-12">
+        <dc:Bounds x="25" y="2550" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-13_di" bpmnElement="ativ-13">
+        <dc:Bounds x="25" y="2690" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw-05_di" bpmnElement="gw-05" isMarkerVisible="true">
+        <dc:Bounds x="50" y="2845" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-17_di" bpmnElement="ativ-17">
+        <dc:Bounds x="25" y="2970" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-18_di" bpmnElement="ativ-18">
+        <dc:Bounds x="25" y="3110" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-14_di" bpmnElement="ativ-14">
+        <dc:Bounds x="25" y="3250" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ativ-15_di" bpmnElement="ativ-15">
+        <dc:Bounds x="25" y="3390" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ev-02_di" bpmnElement="ev-02">
+        <dc:Bounds x="57" y="3552" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ev-05_di" bpmnElement="ev-05">
+        <dc:Bounds x="57" y="3692" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ev-06_di" bpmnElement="ev-06">
+        <dc:Bounds x="57" y="3832" width="36" height="36" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

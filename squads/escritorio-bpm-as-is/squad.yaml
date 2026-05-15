@@ -1,0 +1,18 @@
+code: escritorio-bpm-as-is
+name: Escritório de BPM — AS-IS
+icon: 🏢
+agents:
+  - elicitador
+  - modelador
+  - auditor
+  - tobe
+pipeline:
+  steps:
+    - 01-elicitador
+    - 02-checkpoint-elicitacao
+    - 03-modelador
+    - 04-checkpoint-bpmn
+    - 05-auditor
+    - 06-checkpoint-auditoria
+    - 07-tobe
+    - 08-checkpoint-tobe

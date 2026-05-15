@@ -1,0 +1,56 @@
+{
+  "processo": "Processo de Aprovação de Compra",
+  "atores": [
+    { "id": "ator-01", "nome": "Solicitante", "tipo": "interno" },
+    { "id": "ator-02", "nome": "Supervisor", "tipo": "interno" },
+    { "id": "ator-03", "nome": "Gerente de Compras", "tipo": "interno" },
+    { "id": "ator-04", "nome": "Fornecedor", "tipo": "externo" },
+    { "id": "ator-05", "nome": "Setor de Cadastro", "tipo": "interno" },
+    { "id": "ator-06", "nome": "Almoxarifado", "tipo": "interno" },
+    { "id": "ator-07", "nome": "Financeiro", "tipo": "interno" },
+    { "id": "sis-01", "nome": "SAP", "tipo": "sistema" }
+  ],
+  "atividades": [
+    { "id": "ativ-01", "descricao": "Preencher formulário de requisição", "ator_responsavel": "ator-01", "sistema": "sis-01" },
+    { "id": "ativ-02", "descricao": "Aprovar requisição", "ator_responsavel": "ator-02", "sistema": "sis-01" },
+    { "id": "ativ-03", "descricao": "Verificar disponibilidade de orçamento", "ator_responsavel": "ator-03", "sistema": "sis-01" },
+    { "id": "ativ-04", "descricao": "Devolver requisição com justificativa", "ator_responsavel": "ator-03", "sistema": "sis-01" },
+    { "id": "ativ-05", "descricao": "Pedir três cotações aos fornecedores", "ator_responsavel": "ator-03", "sistema": "sis-02" },
+    { "id": "ativ-06", "descricao": "Validar cadastro do fornecedor", "ator_responsavel": "ator-03", "sistema": "sis-01" },
+    { "id": "ativ-07", "descricao": "Incluir fornecedor no sistema", "ator_responsavel": "ator-05", "sistema": "sis-01" },
+    { "id": "ativ-08", "descricao": "Emitir pedido de compra", "ator_responsavel": "ator-03", "sistema": "sis-01" },
+    { "id": "ativ-09", "descricao": "Enviar notificação automática ao fornecedor", "ator_responsavel": "sis-01", "sistema": "sis-01" },
+    { "id": "ativ-10", "descricao": "Confirmar prazo de entrega", "ator_responsavel": "ator-04", "sistema": "sis-02" },
+    { "id": "ativ-11", "descricao": "Conferir nota fiscal contra pedido", "ator_responsavel": "ator-06", "sistema": "sis-01" },
+    { "id": "ativ-12", "descricao": "Dar entrada no estoque", "ator_responsavel": "ator-06", "sistema": "sis-01" },
+    { "id": "ativ-13", "descricao": "Resolver divergência na entrega", "ator_responsavel": "ator-03", "sistema": "sis-01" },
+    { "id": "ativ-14", "descricao": "Gerar documento de pagamento automaticamente", "ator_responsavel": "sis-01", "sistema": "sis-01" },
+    { "id": "ativ-15", "descricao": "Quitar pagamento", "ator_responsavel": "ator-07", "sistema": "sis-01" }
+  ],
+  "eventos": [
+    { "id": "ev-01", "tipo": "start", "descricao": "Necessidade de compra" },
+    { "id": "ev-02", "tipo": "end", "descricao": "Pagamento efetuado" },
+    { "id": "ev-03", "tipo": "end", "descricao": "Requisição devolvida (sem orçamento)" }
+  ],
+  "gateways": [
+    { "id": "gw-01", "tipo": "exclusive", "descricao": "Valor da compra", "condicoes": ["Até R$ 5.000", "Acima de R$ 5.000"] },
+    { "id": "gw-02", "tipo": "exclusive", "descricao": "Disponibilidade de orçamento", "condicoes": ["Sim", "Não"] },
+    { "id": "gw-03", "tipo": "exclusive", "descricao": "Fornecedor cadastrado", "condicoes": ["Sim", "Não"] },
+    { "id": "gw-04", "tipo": "exclusive", "descricao": "Conferência da nota fiscal", "condicoes": ["Tudo certo", "Divergência"] }
+  ],
+  "sistemas": [
+    { "id": "sis-01", "nome": "SAP", "tipo": "ERP" },
+    { "id": "sis-02", "nome": "E-mail", "tipo": "outro" }
+  ],
+  "regras_de_negocio": [
+    { "id": "rn-01", "descricao": "Aprovação direta pelo supervisor se valor <= R$ 5.000", "atividade_relacionada": "ativ-02" },
+    { "id": "rn-02", "descricao": "Obrigatoriedade de três cotações aos fornecedores", "atividade_relacionada": "ativ-05" },
+    { "id": "rn-03", "descricao": "Critério de escolha: menor preço", "atividade_relacionada": "ativ-08" },
+    { "id": "rn-04", "descricao": "Pagamento dentro do prazo do contrato", "atividade_relacionada": "ativ-15" }
+  ],
+  "observacoes": [
+    "SAP aparece como ator do tipo sistema e no array de sistemas. Modelador deve tratar ativ-09 e ativ-14 como serviceTask sem lane própria.",
+    "Fluxo após ativ-13 (resolver divergência) não especificado na transcrição. Modelador deve encerrar com endEvent intermediário.",
+    "gw-01 modela a decisão do Supervisor sobre alçada de aprovação. Caminho 'Até R$ 5.000': Supervisor aprova diretamente, fluxo vai para ativ-05 (cotações) sem passar por ativ-03. Caminho 'Acima de R$ 5.000': fluxo vai para ativ-03 (Gerente de Compras verifica disponibilidade de orçamento). Os dois caminhos NÃO convergem na mesma atividade."
+  ]
+}
