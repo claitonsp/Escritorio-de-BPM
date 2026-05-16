@@ -186,39 +186,71 @@ Output: `output/2026-05-14-000001/v1/processo-tobe.bpmn`, validado no bpmn.io.
 - ev-05, ev-06 (novos), ev-04 removido
 - Supervisor mantido: segregação de deveres
 
-## Próxima ação: edge-injector.js (setas no diagrama)
+## Sessão 2026-05-15: bpmn-layout.js e nomenclatura
 
-**Problema:** bpmn-auto-layout gera `BPMNShape` para nós mas NÃO gera `BPMNEdge` para sequenceFlows. Sem BPMNEdge no BPMNPlane, bpmn.io não renderiza setas de conexão.
+### O que foi feito
 
-**Solução imediata (sem bpmn-js):** escrever `edge-injector.js` em Node.js puro, sem dependências externas, seguindo o mesmo padrão do `di-injector.js` já existente.
+**Problema resolvido: layout de swimlanes.**
+O bpmn-auto-layout posicionava todos os elementos em coluna única (viewBox 110×3853px, sem lanes). Diagnóstico: a biblioteca ignora `laneSet` e `flowNodeRef` ao calcular coordenadas. O pipeline de três scripts (bpmn-auto-layout + di-injector + edge-injector) foi descartado.
 
-**Lógica do edge-injector.js:**
-1. Ler o arquivo BPMN com layout (saída do bpmn-auto-layout, que já tem BPMNShape com dc:Bounds)
-2. Extrair posições de todos os nós via regex nos BPMNShape: `id`, `x`, `y`, `width`, `height`
-3. Extrair todos os sequenceFlows via regex: `id`, `sourceRef`, `targetRef`
-4. Para cada sequenceFlow, calcular dois waypoints:
-   - Ponto de saída: centro-baixo do elemento de origem → `x + width/2`, `y + height`
-   - Ponto de entrada: centro-cima do elemento de destino → `x + width/2`, `y`
-5. Gerar `<bpmndi:BPMNEdge>` com dois `<di:waypoint>` para cada sequenceFlow
-6. Injetar esses BPMNEdge no BPMNPlane, após os BPMNShape existentes
+**Solução implementada: `bpmn-layout.js`**
+Arquivo em `squads/escritorio-bpm-as-is/scripts/bpmn-layout.js`. Script Node.js sem dependências externas que substitui o pipeline inteiro.
 
-**Resultado esperado:** setas retas conectando todos os elementos. Não serão roteadas com curvas (isso é bpmn-js), mas todas as conexões estarão visíveis e corretas para validação e apresentação.
+Algoritmo:
+1. Parse do BPMN via regex, sem biblioteca de XML
+2. Extração de lanes, nós (tasks/events/gateways) e sequenceFlows
+3. Detecção de back-edges via DFS (ciclos, ex.: gw-05 → ativ-12)
+4. Ordenação topológica com longest-path (Kahn's algorithm) → coluna de cada elemento
+5. Posicionamento: `x = MARGIN_L + col × COL_W`, `y = MARGIN_T + lane_index × LANE_H`
+6. Geração de BPMNShape (lanes + nós) e BPMNEdge (cotovelo para cross-lane, reta para same-lane, rota abaixo das lanes para back-edges)
+7. Substitui ou injeta a seção `BPMNDiagram` no arquivo de saída
 
-**Arquivo a criar:** `squads/escritorio-bpm-as-is/scripts/edge-injector.js`
-
-**Forma de uso (mesma convenção do di-injector):**
+Uso:
 ```
-node squads/escritorio-bpm-as-is/scripts/edge-injector.js <input.bpmn> <output.bpmn>
-```
-
-**Pipeline completo após a correção:**
-```
-bpmn-auto-layout → di-injector.js → edge-injector.js → arquivo final com shapes de nós + lanes + setas
+node squads/escritorio-bpm-as-is/scripts/bpmn-layout.js <input.bpmn> <output.bpmn>
 ```
 
-**Validação:** abrir o arquivo final no bpmn.io e confirmar que todas as setas estão presentes conectando os elementos corretamente.
+Input: BPMN bruto do agente Modelador (sem DI). Output: BPMN completo com DI pronto para abrir no bpmn.io.
 
-**Nota sobre bpmn-js (Alternativa B):** continua sendo a solução definitiva para setas roteadas com curvas e lanes sem sobreposição. Endereçar após o edge-injector estar funcionando.
+**Resultado validado:** diagrama (6) renderizou no bpmn.io com 7 lanes horizontais, elementos distribuídos esquerda → direita por fluxo, setas em cotovelo entre lanes. Dimensões: 4110×930px. Legível e entregável.
+
+**Nomenclatura corrigida em `processo-tobe.bpmn`.**
+Regras aplicadas: atividades com Verbo Infinitivo + Objeto; eventos com Substantivo + Particípio; gateways como pergunta com `?`; rótulos de saída como resposta direta.
+
+Mudanças principais:
+- gw-01: "Valor da compra" → "Valor acima de R$ 5.000?"
+- gw-02: "Disponibilidade de orçamento" → "Orçamento disponível?"
+- gw-03: "Fornecedor cadastrado" → "Fornecedor cadastrado?"
+- gw-04: "Conferência da nota fiscal" → "NF confere com pedido?"
+- gw-05: "Resolução da divergência" → "Como resolver a divergência?"
+- ativ-05: "Pedir três cotações..." → "Solicitar cotações aos fornecedores"
+- ativ-06: removido "automaticamente" → "Validar cadastro do fornecedor"
+- ativ-09: "Enviar notificação automática ao fornecedor" → "Notificar fornecedor"
+- ativ-14: removido "automaticamente" → "Gerar documento de pagamento"
+- ativ-16: "Registrar comparativo... e selecionar fornecedor" → "Selecionar fornecedor"
+- ev-03: removido parêntese → "Requisição devolvida"
+- ev-05: "Mercadoria devolvida ao fornecedor" → "Mercadoria devolvida"
+- ev-06: "Caso escalado para Diretoria" → "Divergência escalada"
+
+**Decisão metodológica confirmada:**
+gw-01 "Valor acima de R$ 5.000?": caminho "Até R$ 5.000" vai direto para ativ-05, bypassing verificação de orçamento. Correto e já confirmado na sessão anterior. Não alterar.
+
+### Próxima ação: regenerar layout e verificar labels
+
+**Pendência:** `processo-tobe.bpmn` tem os nomes corrigidos, mas `processo-tobe-layout.bpmn` ainda tem os nomes antigos (gerado antes da correção). Precisa re-executar o bpmn-layout.js para que os labels dentro dos retângulos reflitam a nomenclatura atualizada.
+
+Comando para o Gemini:
+```
+node squads/escritorio-bpm-as-is/scripts/bpmn-layout.js squads/escritorio-bpm-as-is/output/2026-05-14-000001/v1/processo-tobe.bpmn squads/escritorio-bpm-as-is/output/2026-05-14-000001/v1/processo-tobe-layout.bpmn
+```
+
+Após executar, abrir `processo-tobe-layout.bpmn` no bpmn.io e confirmar:
+1. Labels dos gateways mostram pergunta com `?`
+2. Labels das atividades seguem Verbo + Objeto, sem advérbios
+3. Labels dos eventos finais são concisos
+4. Nenhum texto transborda o retângulo (se transbordar, ajustar `ELEM_W` ou `TASK_H` no bpmn-layout.js)
+
+**Refinamento posterior (não bloqueante):** aplicar as mesmas correções de nomenclatura ao `processo-as-is.bpmn` para manter consistência entre AS-IS e TO-BE.
 
 ## Regras de estilo invioláveis
 
