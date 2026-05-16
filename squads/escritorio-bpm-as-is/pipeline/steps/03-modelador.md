@@ -46,8 +46,15 @@ Estrutura quando há atores externos:
 
 ### 3. Tipos de tarefa
 
-- Atividade cujo `ator_responsavel` é humano interno ou externo: `<userTask>`
-- Atividade cujo `ator_responsavel` é sistema (`sis-XX`): `<serviceTask>` posicionada na lane do humano da atividade imediatamente anterior
+Use o campo `task_type` do JSON de entrada como fonte de verdade:
+
+| `task_type`    | Tag BPMN            | Quando usar |
+|---|---|---|
+| `"userTask"`   | `<userTask>`        | Humano executa manualmente (análise, aprovação, contato) |
+| `"serviceTask"`| `<serviceTask>`     | Sistema executa sem intervenção humana no momento (integração ERP, geração de NF, e-mail automático) |
+| `"scriptTask"` | `<scriptTask>`      | Regra automática do motor de processo (raro no AS-IS) |
+
+Se `task_type` estiver ausente no JSON: use `<userTask>` para `ator_responsavel` humano e `<serviceTask>` para `ator_responsavel` do tipo sistema (`sis-XX`).
 
 ### 4. Gateways — rótulos obrigatórios nas saídas
 
@@ -75,19 +82,49 @@ Exemplo:
 
 **Todo gateway divergente deve ter TODOS os ramos definidos** — nenhum caminho pode ficar sem destino.
 
+**Gateway convergente obrigatório:** sempre que um gateway exclusivo divergir em dois ou mais caminhos que se reúnem numa tarefa comum posterior, insira um `<exclusiveGateway>` sem rótulo como ponto de convergência. Exemplo:
+
+```xml
+<!-- ERRADO — convergência implícita: duas setas chegando direto em ativ-05 -->
+<sequenceFlow sourceRef="gw-01" targetRef="ativ-03" name="Sim"/>
+<sequenceFlow sourceRef="gw-01" targetRef="ativ-05" name="Não"/>
+<sequenceFlow sourceRef="ativ-03" targetRef="ativ-05"/>
+
+<!-- CORRETO — gateway convergente antes da tarefa comum -->
+<sequenceFlow sourceRef="gw-01" targetRef="ativ-03" name="Sim"/>
+<sequenceFlow sourceRef="gw-01" targetRef="gw-conv-01" name="Não"/>
+<sequenceFlow sourceRef="ativ-03" targetRef="gw-conv-01"/>
+<exclusiveGateway id="gw-conv-01"/>
+<sequenceFlow sourceRef="gw-conv-01" targetRef="ativ-05"/>
+```
+
 ### 5. Loops — Sequence Flow de retorno, nunca End Event
 
 Quando `destino_tipo == "loop"`, gere um `<sequenceFlow>` apontando de volta para `destino_id`. Não gere End Event.
 
-End Events (`<endEvent>`) são gerados apenas quando `destino_tipo == "evento_fim"`, indicando encerramento definitivo do processo naquele caminho.
+End Events (`<endEvent>`) are gerados apenas quando `destino_tipo == "evento_fim"`, indicando encerramento definitivo do processo naquele caminho.
+
+Quando o JSON indicar loop sem definir limite de tentativas, adicione um comentário XML `<!-- LOOP SEM LIMITE — verificar regra de negócio -->` logo após o sequenceFlow de retorno. Não invente a regra; apenas sinalize para o auditor.
 
 ### 6. Message Flows — interações com atores externos
 
-Para cada atividade interna que envia ou recebe informação de um ator externo, adicione um `<messageFlow>` na `<collaboration>`:
+Para cada atividade interna que envia ou recebe informação de um ator externo, adicione um `<messageFlow>` na `<collaboration>`. Nunca use `<sequenceFlow>` para cruzar a fronteira entre pools.
+
 - Saída da empresa para externo: `sourceRef="[id-atividade-interna]"` e `targetRef="part-[id-ator-externo]"`
 - Entrada do externo para empresa: `sourceRef="part-[id-ator-externo]"` e `targetRef="[id-atividade-interna]"`
 
 Atividades que tipicamente interagem com fornecedor: solicitar cotações, enviar pedido, confirmar recebimento, realizar follow-up.
+
+**Erro crítico a evitar:**
+```xml
+<!-- ERRADO — sequenceFlow cruzando pool: inválido BPMN 2.0 -->
+<sequenceFlow id="sf-ativ03-part-fornecedor" sourceRef="ativ-03" targetRef="part-fornecedor"/>
+
+<!-- CORRETO — messageFlow dentro da collaboration -->
+<messageFlow id="mf-ativ03-part-fornecedor" sourceRef="ativ-03" targetRef="part-fornecedor"/>
+```
+Regra de detecção: se targetRef ou sourceRef de um <sequenceFlow> for o ID de um <participant>, você cometeu o erro acima. Revise antes de entregar.
+
 
 ### 7. Atributo `name=` no XML
 
@@ -103,7 +140,7 @@ Derive a sequência seguindo estas regras em ordem de prioridade:
 2. Siga a ordem lógica das atividades conforme as descrições (verbos indicam sequência)
 3. Cada gateway tem exatamente uma saída por condição em `condicoes`
 4. Handoff entre atores indica sequência (atividade do ator A → atividade do ator B)
-5. Se houver fluxo sem fim definido na transcrição, gere `<endEvent name="Fluxo indefinido — [ponto]"/>`
+5. Toda atividade que não possui nenhum `<sequenceFlow>` de saída definido no JSON (não é origem de nenhuma seta, não tem gateway subsequente) DEVE ser seguida imediatamente por um `<endEvent>`. Gere: `<endEvent id="ev-fim-[ativ-id]" name="[nome curto do estado final]"/>` e conecte com um `<sequenceFlow>`. Nunca deixe uma atividade sem saída — um token preso é um processo zumbi.
 
 ### 9. Proibições absolutas
 
@@ -114,6 +151,8 @@ Derive a sequência seguindo estas regras em ordem de prioridade:
 - Não use End Event quando a condição indica retorno/loop
 - Não omita o `name=` nos Sequence Flows que saem de gateways
 - Não use descrições longas como rótulo de elemento BPMN
+- Não deixe múltiplas setas chegando em uma mesma tarefa sem um gateway convergente antes dela (convergência implícita). Se um gateway divergente abre caminhos alternativos, feche-os com um segundo `<exclusiveGateway>` vazio antes da próxima tarefa comum
+- Não modele "Plano B acionado" ou equivalentes como `<userTask>`. Estado no particípio passado sem ação subsequente definida é sempre um `<endEvent>`, nunca uma tarefa
 
 ### 10. IDs
 

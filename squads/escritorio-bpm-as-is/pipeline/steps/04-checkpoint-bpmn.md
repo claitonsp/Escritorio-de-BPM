@@ -38,6 +38,20 @@ grep -P 'sourceRef="gw-' processo-as-is.bpmn | grep -v 'name='
 grep -i 'lane.*fornecedor\|lane.*cliente\|lane.*transportadora' processo-as-is.bpmn
 ```
 
+```bash
+# 1f. SequenceFlow cruzando fronteira de Pool — deve retornar zero linhas
+# Um sequenceFlow cujo sourceRef ou targetRef aponta para um <participant> é violação BPMN 2.0
+grep -oP 'sequenceFlow[^>]*sourceRef="part-[^"]*"' processo-as-is.bpmn
+grep -oP 'sequenceFlow[^>]*targetRef="part-[^"]*"' processo-as-is.bpmn
+```
+
+```bash
+# 1g. Convergência implícita — tarefas com mais de uma seta de entrada sem gateway convergente
+# Conta sourceRefs duplicados: se um mesmo targetRef aparece mais de uma vez em sequenceFlows,
+# pode ser convergência implícita. Resultado deve ser inspecionado manualmente.
+grep -oP 'targetRef="\K[^"]+' processo-as-is.bpmn | sort | uniq -d
+```
+
 Se qualquer verificação retornar resultado, **corrija o BPMN antes de continuar**. Não avance para o Auditor com erros.
 
 ## Passo 2 — Layout visual
@@ -57,7 +71,7 @@ Abra no bpmn.io e confirme visualmente:
 ## Passo 3 — Aprovação
 
 Só passe para o Auditor após:
-- [ ] Todas as 5 verificações grep retornaram zero resultados
+- [ ] Todas as 7 verificações grep retornaram zero resultados (1g requer inspeção manual)
 - [ ] Layout visual validado no bpmn.io
 
 Cole o conteúdo do `elicitacao.json` para o Auditor processar.

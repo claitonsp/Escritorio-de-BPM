@@ -168,7 +168,7 @@
     <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="collab_01">
     <bpmndi:BPMNShape id="part-empresa_di" bpmnElement="part-empresa" isHorizontal="true">
-      <dc:Bounds x="0" y="0" width="4310" height="600" />
+      <dc:Bounds x="0" y="0" width="4310" height="680" />
     </bpmndi:BPMNShape>
     <bpmndi:BPMNShape id="part-ator-03_di" bpmnElement="part-ator-03" isHorizontal="true">
       <dc:Bounds x="0" y="700" width="4310" height="60" />
@@ -278,7 +278,7 @@
       <di:waypoint x="805" y="180" />
       <di:waypoint x="900" y="180" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="828" y="166" width="50" height="14" />
+        <dc:Bounds x="828" y="158" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="sf-gw-01-ativ-01_di" bpmnElement="sf-gw-01-ativ-01">
@@ -287,7 +287,7 @@
       <di:waypoint x="420" y="640" />
       <di:waypoint x="420" y="90" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="575" y="134" width="50" height="14" />
+        <dc:Bounds x="575" y="618" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="sf-ativ-03-gw-02_di" bpmnElement="sf-ativ-03-gw-02">
@@ -298,14 +298,14 @@
       <di:waypoint x="1165" y="180" />
       <di:waypoint x="1260" y="180" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="1188" y="166" width="50" height="14" />
+        <dc:Bounds x="1188" y="158" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="sf-gw-02-ativ-04-nao_di" bpmnElement="sf-gw-02-ativ-04-nao">
       <di:waypoint x="1165" y="180" />
       <di:waypoint x="1260" y="180" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="1188" y="166" width="50" height="14" />
+        <dc:Bounds x="1188" y="158" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="sf-ativ-04-gw-03_di" bpmnElement="sf-ativ-04-gw-03">
@@ -316,7 +316,7 @@
       <di:waypoint x="1525" y="180" />
       <di:waypoint x="1620" y="180" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="1548" y="166" width="50" height="14" />
+        <dc:Bounds x="1548" y="158" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="sf-gw-03-ativ-04_di" bpmnElement="sf-gw-03-ativ-04">
@@ -325,7 +325,7 @@
       <di:waypoint x="1320" y="640" />
       <di:waypoint x="1320" y="210" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="1385" y="194" width="50" height="14" />
+        <dc:Bounds x="1385" y="618" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="sf-ativ-05-gw-04_di" bpmnElement="sf-ativ-05-gw-04">
@@ -336,14 +336,14 @@
       <di:waypoint x="1885" y="180" />
       <di:waypoint x="2160" y="180" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="1998" y="166" width="50" height="14" />
+        <dc:Bounds x="1998" y="158" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="sf-gw-04-ativ-06_di" bpmnElement="sf-gw-04-ativ-06">
       <di:waypoint x="1885" y="180" />
       <di:waypoint x="1980" y="180" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="1908" y="166" width="50" height="14" />
+        <dc:Bounds x="1908" y="158" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="sf-ativ-06-ativ-07_di" bpmnElement="sf-ativ-06-ativ-07">
@@ -360,14 +360,14 @@
       <di:waypoint x="2473" y="300" />
       <di:waypoint x="2520" y="300" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="2448" y="226" width="50" height="14" />
+        <dc:Bounds x="2479" y="233" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="sf-gw-05-ativ-09_di" bpmnElement="sf-gw-05-ativ-09">
       <di:waypoint x="2425" y="180" />
       <di:waypoint x="2700" y="180" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="2538" y="166" width="50" height="14" />
+        <dc:Bounds x="2538" y="158" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="sf-ativ-08-ativ-09_di" bpmnElement="sf-ativ-08-ativ-09">
@@ -388,7 +388,7 @@
       <di:waypoint x="3145" y="180" />
       <di:waypoint x="3240" y="180" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="3168" y="166" width="50" height="14" />
+        <dc:Bounds x="3168" y="158" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="sf-gw-06-ativ-10_di" bpmnElement="sf-gw-06-ativ-10">
@@ -397,7 +397,7 @@
       <di:waypoint x="2940" y="640" />
       <di:waypoint x="2940" y="210" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="3005" y="194" width="50" height="14" />
+        <dc:Bounds x="3005" y="618" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="sf-ativ-11-gw-07_di" bpmnElement="sf-ativ-11-gw-07">
@@ -410,14 +410,14 @@
       <di:waypoint x="3553" y="420" />
       <di:waypoint x="3600" y="420" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="3528" y="286" width="50" height="14" />
+        <dc:Bounds x="3559" y="293" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="sf-gw-07-ev-03_di" bpmnElement="sf-gw-07-ev-03">
       <di:waypoint x="3505" y="180" />
       <di:waypoint x="3642" y="180" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="3549" y="166" width="50" height="14" />
+        <dc:Bounds x="3549" y="158" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="sf-ativ-12-ativ-13_di" bpmnElement="sf-ativ-12-ativ-13">
@@ -436,51 +436,51 @@
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="mf-ativ-04-part-ator-03_di" bpmnElement="mf-ativ-04-part-ator-03">
       <di:waypoint x="1320" y="210" />
-      <di:waypoint x="2155" y="700" />
+      <di:waypoint x="1320" y="700" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="1713" y="441" width="50" height="14" />
+        <dc:Bounds x="1326" y="448" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="mf-part-ator-03-ativ-05_di" bpmnElement="mf-part-ator-03-ativ-05">
-      <di:waypoint x="2155" y="700" />
+      <di:waypoint x="1680" y="700" />
       <di:waypoint x="1680" y="210" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="1893" y="441" width="50" height="14" />
+        <dc:Bounds x="1686" y="448" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="mf-ativ-06-part-ator-03_di" bpmnElement="mf-ativ-06-part-ator-03">
       <di:waypoint x="2040" y="210" />
-      <di:waypoint x="2155" y="700" />
+      <di:waypoint x="2040" y="700" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="2073" y="441" width="50" height="14" />
+        <dc:Bounds x="2046" y="448" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="mf-ativ-09-part-ator-03_di" bpmnElement="mf-ativ-09-part-ator-03">
       <di:waypoint x="2760" y="210" />
-      <di:waypoint x="2155" y="700" />
+      <di:waypoint x="2760" y="700" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="2433" y="441" width="50" height="14" />
+        <dc:Bounds x="2766" y="448" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="mf-part-ator-03-ativ-10_di" bpmnElement="mf-part-ator-03-ativ-10">
-      <di:waypoint x="2155" y="700" />
+      <di:waypoint x="2940" y="700" />
       <di:waypoint x="2940" y="210" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="2523" y="441" width="50" height="14" />
+        <dc:Bounds x="2946" y="448" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="mf-ativ-11-part-ator-03_di" bpmnElement="mf-ativ-11-part-ator-03">
       <di:waypoint x="3300" y="210" />
-      <di:waypoint x="2155" y="700" />
+      <di:waypoint x="3300" y="700" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="2703" y="441" width="50" height="14" />
+        <dc:Bounds x="3306" y="448" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     <bpmndi:BPMNEdge id="mf-part-ator-03-ativ-12_di" bpmnElement="mf-part-ator-03-ativ-12">
-      <di:waypoint x="2155" y="700" />
+      <di:waypoint x="3660" y="700" />
       <di:waypoint x="3660" y="450" />
       <bpmndi:BPMNLabel>
-        <dc:Bounds x="2883" y="561" width="50" height="14" />
+        <dc:Bounds x="3666" y="568" width="50" height="14" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>

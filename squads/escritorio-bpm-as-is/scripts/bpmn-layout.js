@@ -284,15 +284,18 @@ const EXT_POOL_H      = 60;
 const EXT_POOL_MARGIN = 20;
 
 // Y para os pools externos e margem de back-edges
-const extPoolsY0 = totalLanesH + 100; // Afasta os pools externos para dar espaço a back-edges
-const backEdgeY  = totalLanesH + BACK_MARGIN; 
+// poolH engloba a calha de back-edges quando existirem, para que as setas de retorno
+// fiquem dentro do contêiner principal e não no "limbo" entre as piscinas.
+const backEdgeY  = totalLanesH + BACK_MARGIN;
+const poolH      = backEdgeSet.size > 0 ? totalLanesH + BACK_MARGIN * 2 : totalLanesH;
+const extPoolsY0 = poolH + 20;
 
 const shapeLines = [];
 
 // Pool shape (contentor externo)
 shapeLines.push(
   `    <bpmndi:BPMNShape id="${mainPartId}_di" bpmnElement="${mainPartId}" isHorizontal="true">`,
-  `      <dc:Bounds x="0" y="0" width="${totalW}" height="${totalLanesH}" />`,
+  `      <dc:Bounds x="0" y="0" width="${totalW}" height="${poolH}" />`,
   `    </bpmndi:BPMNShape>`
 );
 
@@ -354,20 +357,49 @@ for (const f of flows) {
       { x: Math.round(tgt.x + tgt.w / 2), y: tgt.y + tgt.h }
     ];
   } else if (isMessage) {
-    // Message Flow: liga centro-inferior da origem ao centro-superior do destino (ou vice-versa)
-    // Usa X de cada extremidade corretamente (fix: antes usava src.x para ambos os pontos)
-    const srcMidX = Math.round(src.x + src.w / 2);
-    const tgtMidX = Math.round(tgt.x + tgt.w / 2);
-    if (src.y < tgt.y) {
+    // Message Flow ortogonal.
+    // Detecta se a extremidade é um Pool inteiro (w === totalW) ou um nó.
+    // Pool → alinha verticalmente com o nó oposto (evita diagonal para o centro).
+    // Nó  → cotovelo em L com ponto de inflexão no meio do eixo Y.
+    const srcMidX  = Math.round(src.x + src.w / 2);
+    const tgtMidX  = Math.round(tgt.x + tgt.w / 2);
+    const srcIsPool = src.w === totalW;
+    const tgtIsPool = tgt.w === totalW;
+
+    if (srcIsPool) {
+      // Pool como origem: sai da borda alinhado com o X do destino
+      const startY = src.y < tgt.y ? src.y + src.h : src.y;
+      const endY   = tgt.y < src.y ? tgt.y + tgt.h : tgt.y;
       waypoints = [
-        { x: srcMidX, y: src.y + src.h },
-        { x: tgtMidX, y: tgt.y }
+        { x: tgtMidX, y: startY },
+        { x: tgtMidX, y: endY }
+      ];
+    } else if (tgtIsPool) {
+      // Pool como destino: chega na borda alinhado com o X da origem
+      const startY = src.y < tgt.y ? src.y + src.h : src.y;
+      const endY   = tgt.y > src.y ? tgt.y : tgt.y + tgt.h;
+      waypoints = [
+        { x: srcMidX, y: startY },
+        { x: srcMidX, y: endY }
       ];
     } else {
-      waypoints = [
-        { x: srcMidX, y: src.y },
-        { x: tgtMidX, y: tgt.y + tgt.h }
-      ];
+      // Nó a nó: cotovelo em L com inflexão no ponto médio do eixo Y
+      const midY = Math.round(src.y + (tgt.y - src.y) / 2);
+      if (src.y < tgt.y) {
+        waypoints = [
+          { x: srcMidX, y: src.y + src.h },
+          { x: srcMidX, y: midY },
+          { x: tgtMidX, y: midY },
+          { x: tgtMidX, y: tgt.y }
+        ];
+      } else {
+        waypoints = [
+          { x: srcMidX, y: src.y },
+          { x: srcMidX, y: midY },
+          { x: tgtMidX, y: midY },
+          { x: tgtMidX, y: tgt.y + tgt.h }
+        ];
+      }
     }
   } else {
     // Sequence Flow padrão (cotovelo L se mudar de lane, reta se mesma lane)
@@ -391,12 +423,27 @@ for (const f of flows) {
 
   const wStr = waypoints.map(p => `      <di:waypoint x="${p.x}" y="${p.y}" />`).join('\n');
 
-  // BPMNLabel: posiciona o texto no ponto médio da aresta (fix: antes era omitido)
+  // BPMNLabel: usa o segmento central da aresta para ancorar o texto.
+  // Se o segmento é horizontal, empurra o label para cima (claro sobre a linha).
+  // Se o segmento é vertical, empurra para a direita (evita sobreposição).
   let labelStr = '';
   if (f.name) {
-    const midX = Math.round((waypoints[0].x + waypoints[waypoints.length - 1].x) / 2) - 25;
-    const midY = Math.round((waypoints[0].y + waypoints[waypoints.length - 1].y) / 2) - 14;
-    labelStr = `\n      <bpmndi:BPMNLabel>\n        <dc:Bounds x="${midX}" y="${midY}" width="50" height="14" />\n      </bpmndi:BPMNLabel>`;
+    const midIdx  = Math.floor(waypoints.length / 2);
+    const ptA     = waypoints[midIdx - 1] || waypoints[0];
+    const ptB     = waypoints[midIdx];
+    const segDx   = Math.abs(ptB.x - ptA.x);
+    const segDy   = Math.abs(ptB.y - ptA.y);
+    let labelX, labelY;
+    if (segDx >= segDy) {
+      // Segmento horizontal — label acima da linha
+      labelX = Math.round((ptA.x + ptB.x) / 2) - 25;
+      labelY = Math.round((ptA.y + ptB.y) / 2) - 22;
+    } else {
+      // Segmento vertical — label à direita da linha
+      labelX = Math.round((ptA.x + ptB.x) / 2) + 6;
+      labelY = Math.round((ptA.y + ptB.y) / 2) - 7;
+    }
+    labelStr = `\n      <bpmndi:BPMNLabel>\n        <dc:Bounds x="${labelX}" y="${labelY}" width="50" height="14" />\n      </bpmndi:BPMNLabel>`;
   }
 
   edgeLines.push(

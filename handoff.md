@@ -71,7 +71,7 @@ O TO-BE é produzido manualmente a partir do diagnóstico. Não faz parte do pip
 - **Python**: 3.14.3
 - **Implantação**: local primeiro, VPS após pipeline validado
 
-## Estado atual do projeto (2026-05-16 — sessão 2)
+## Estado atual do projeto (2026-05-16 — sessão 3)
 
 ### Pipeline AS-IS — estável
 
@@ -106,27 +106,46 @@ Script `install-skills.bat` na raiz: copia de `skills/` para `~/.hermes/skills/l
 
 **Atenção:** API keys no `.hermes/.env` são as antigas (revogadas). Atualizar antes da Fase 6.
 
-### bpmn-layout.js — correções aplicadas nesta sessão
+### bpmn-layout.js — histórico de correções
 
-**Bugs Bizagi corrigidos (3 bugs originais):**
+**Sessão 2 — Bugs Bizagi (3 bugs originais):**
 - BPMNPlane agora referencia `collab_01` (colaboração), não o processo
 - Pool shape usa ID real do participant (`part-empresa`)
 - BPMNShape gerado para todos os pools externos (Fornecedor)
 
-**Melhorias adicionais (análise CBOK/BPMN 2.0):**
+**Sessão 2 — Melhorias CBOK/BPMN 2.0:**
 - BPMNLabel gerado para arestas com nome (fix: labels "Sim"/"Não" apareciam em coordenada 0,0)
-- Message Flow routing corrigido (fix: X do destino usava X da origem, setas iam para lugar errado)
-- Validação de cross-pool: script avisa se sequenceFlow cruza fronteira de pool (violação BPMN 2.0)
+- Message Flow routing corrigido (fix: X do destino usava X da origem)
+- Validação de cross-pool: script avisa se sequenceFlow cruza fronteira de pool
 - Suporte completo a Message Flows no diagrama DI
 
+**Sessão 3 — Ajustes visuais e semânticos:**
+- Pool principal engloba calha de back-edges: `poolH = totalLanesH + BACK_MARGIN * 2` quando há loops. Setas de retorno deixam de ficar no "limbo" entre as piscinas.
+- BPMNLabel reposicionado por segmento central da aresta: horizontal empurra label para cima (y - 22), vertical empurra para a direita (x + 6). Labels "Sim"/"Não" não sobrepõem mais a linha.
+- Message Flow ortogonal: detecta se extremidade é Pool inteiro (w === totalW) e alinha verticalmente, eliminando diagonais que cruzavam o diagrama. Nó a nó usa cotovelo em L.
+
 **Pendente — validação final no Bizagi:**
-O arquivo atualizado ainda não foi importado e validado visualmente no Bizagi. Fazer na próxima sessão.
+O arquivo ainda não foi importado e validado visualmente no Bizagi. Fazer na próxima sessão.
 
-### Próxima ação: instalar Hermes localmente
+### Agentes — melhorias aplicadas na sessão 3
 
-Antes de subir para VPS, o fluxo completo será validado local.
+**`01-elicitador.md`:**
+- Campo `task_type` adicionado ao schema de atividades (`"userTask" | "serviceTask" | "scriptTask"`)
+- Seção de classificação de tipo de tarefa com regras baseadas em `ator_responsavel` e `sistema`
 
-Checklist de instalação (status):
+**`03-modelador.md`:**
+- Proibição de sequenceFlow cross-pool reforçada com exemplo de erro a evitar
+- Regra de convergência implícita: gateway divergente exige gateway convergente antes da próxima tarefa comum
+- Tipagem de tarefa baseada no campo `task_type` do JSON (tabela com 3 tipos)
+- Atividade terminal sem saída definida obriga geração imediata de `<endEvent>`
+- Loop sem limite de tentativas gera comentário XML sinalizando para o auditor
+
+**`04-checkpoint-bpmn.md`:**
+- Verificação 1f: grep detecta sequenceFlow cujo sourceRef ou targetRef aponta para participant
+- Verificação 1g: grep detecta targetRef duplicados (convergência implícita)
+- Total de verificações: 7 (era 5)
+
+### Checklist de fases
 
 **Fase 1 — Pré-requisitos**
 - [x] Instalar ffmpeg via winget
@@ -148,9 +167,9 @@ Checklist de instalação (status):
 - [x] Skill `bpm-revisao`: perguntas de clarificação pós-transcrição
 - [x] Skill `bpm-pipeline`: dispara opensquad e notifica quando pronto
 
-**Fase 5 — Correção Bizagi**
-- [x] Corrigir os 3 bugs no `bpmn-layout.js`
-- [ ] Validar import no Bizagi (pendente — fazer na próxima sessão)
+**Fase 5 — Validação Bizagi**
+- [x] Corrigir bugs de compatibilidade no `bpmn-layout.js` (concluído em sessões 2 e 3)
+- [ ] Validar import no Bizagi (pendente — próxima sessão)
 
 **Fase 6 — Teste ponta a ponta (local)**
 - [ ] Atualizar API keys no `.hermes/.env` para as chaves novas
@@ -159,16 +178,17 @@ Checklist de instalação (status):
 **Fase 7 — Subir para VPS**
 - [ ] Somente após fase 6 validada
 
-### Débitos técnicos identificados (análise CBOK 4.0)
+### Débitos técnicos restantes
 
-Pontos levantados pela análise do diagrama — corrigir nos agentes na próxima sessão:
-
-| Agente | Melhoria pendente |
+| Agente | Status |
 |---|---|
-| 01-elicitador | Classificar tipo de tarefa: userTask, serviceTask, scriptTask |
-| 03-modelador | Regra explícita: ator externo = messageFlow obrigatório, nunca sequenceFlow |
-| 04-checkpoint-bpmn | Validação topológica: cross-pool, dead ends, labels ausentes em todas saídas de gateway |
-| 05-auditor | Validar estados finais semanticamente (ex: "Plano B acionado" não é end state válido) |
+| 01-elicitador — campo `task_type` | Concluído (sessão 3) |
+| 03-modelador — messageFlow obrigatório para externos | Concluído (sessão 3) |
+| 03-modelador — convergência implícita proibida | Concluído (sessão 3) |
+| 03-modelador — atividade terminal gera endEvent | Concluído (sessão 3) |
+| 04-checkpoint-bpmn — detecção cross-pool e convergência | Concluído (sessão 3) |
+| 05-auditor — validar estados finais semanticamente | Pendente |
+| Rodar novo pipeline com agentes corrigidos e validar no Bizagi | Pendente |
 
 ## Arquitetura dos agentes (estado atual dos prompts)
 
@@ -179,6 +199,8 @@ Campo `nome_bpmn` gerado diretamente pelo agente:
 - Eventos start: estado que dispara, máx 4 palavras
 - Eventos end: estado resultante, máx 3 palavras
 - Gateways: pergunta com "?", máx 6 palavras
+
+Campo `task_type` obrigatório em atividades: `"userTask" | "serviceTask" | "scriptTask"`. Regra: humano sem sistema = userTask; sistema executa ou medeia = serviceTask; dúvida = userTask.
 
 Campo `condicoes` com estrutura explícita:
 ```json
@@ -194,7 +216,11 @@ Ator externo: `"tipo": "externo"` gera Pool Black Box. Nunca Lane.
 2. Lane vazia proibida
 3. `name=` usa `nome_bpmn`, nunca `descricao`
 4. Todas as saídas de gateway têm `name="Sim"` ou `name="Não"`
-5. Loop = Sequence Flow de retorno, nunca End Event
+5. Loop = Sequence Flow de retorno, nunca End Event; loops sem limite geram comentário XML
+6. Sequência Flow nunca cruza fronteira de Pool — sempre messageFlow
+7. Gateway divergente exige gateway convergente antes da próxima tarefa comum (proíbe convergência implícita)
+8. Atividade terminal sem saída definida recebe `<endEvent>` imediato
+9. Tag de tarefa determinada pelo campo `task_type` do JSON
 
 ### `07-tobe.md`
 
@@ -202,10 +228,14 @@ Reescrito genérico com as mesmas regras do Modelador.
 
 ### `04-checkpoint-bpmn.md`
 
-Validação automática com grep bloqueia se:
-- `name=` com mais de 50 caracteres
-- Gateway com saída sem `name=`
-- Lane com nome de ator externo (Fornecedor, cliente, transportadora)
+Validação automática com grep bloqueia se (7 verificações):
+- 1a. Lane sem flowNodeRef
+- 1b. `name=` com mais de 50 caracteres
+- 1c. Lane vazia
+- 1d. Gateway com saída sem `name=`
+- 1e. Ator externo modelado como Lane
+- 1f. sequenceFlow cujo sourceRef ou targetRef aponta para participant (cross-pool)
+- 1g. targetRef duplicados em sequenceFlows (convergência implícita — inspeção manual)
 
 ### `08-checkpoint-tobe.md`
 
@@ -221,11 +251,15 @@ node squads/escritorio-bpm-as-is/scripts/bpmn-layout.js <input.bpmn> <output.bpm
 
 Algoritmo: regex parse, extração de lanes/nós/flows, Kahn topological sort, longest-path column assignment, BPMNShape + BPMNEdge, injeção no BPMNDiagram.
 
-Constantes: `POOL_LABEL_W=30`, `LANE_LABEL_W=120`, `LANE_H=120`, `COL_W=180`, `ELEM_W=120`, `TASK_H=60`, `EVENT_W=36`, `GW_W=50`.
+Constantes: `POOL_LABEL_W=30`, `LANE_LABEL_W=120`, `LANE_H=120`, `COL_W=180`, `ELEM_W=120`, `TASK_H=60`, `EVENT_W=36`, `GW_W=50`, `BACK_MARGIN=40`.
 
-Limitação conhecida: back-edges (loops) roteados abaixo das lanes (y=960). Não bloqueante.
+Pool height: `poolH = backEdgeSet.size > 0 ? totalLanesH + BACK_MARGIN * 2 : totalLanesH`. Pools externos começam em `poolH + 20`.
 
-Pendência: corrigir os 3 bugs de compatibilidade com Bizagi descritos acima.
+Message Flow routing: detecta se extremidade é Pool (w === totalW) e usa waypoints verticais alinhados. Nó a nó usa cotovelo em L com midY.
+
+BPMNLabel: usa segmento central da aresta. Horizontal: y - 22. Vertical: x + 6.
+
+Limitação conhecida: 23 colunas no diagrama atual refletem o modelo linear do processo de compras — esperado.
 
 ## Status das regras BPMN
 
@@ -236,11 +270,18 @@ Pendência: corrigir os 3 bugs de compatibilidade com Bizagi descritos acima.
 | Loops como Sequence Flow de retorno | Validado |
 | `name=` usa `nome_bpmn` curto | Validado |
 | Lane vazia proibida | Validado |
-| Checkpoint detecta serviceTask incorreto | Validado |
+| Tipagem de tarefa via campo `task_type` | Validado (sessão 3) |
 | Message Flows para atores externos | Validado |
-| BPMNPlane referencia collaboration | Pendente (bug Bizagi) |
-| Pool shape com ID correto | Pendente (bug Bizagi) |
-| BPMNShape para Pool Fornecedor | Pendente (bug Bizagi) |
+| sequenceFlow proibido crossing pool | Validado (sessão 3) |
+| Convergência implícita proibida | Validado (sessão 3) |
+| Atividade terminal gera endEvent | Validado (sessão 3) |
+| BPMNPlane referencia collaboration | Validado (sessão 2) |
+| Pool shape com ID correto | Validado (sessão 2) |
+| BPMNShape para Pool Fornecedor | Validado (sessão 2) |
+| Pool engloba calha de back-edges | Validado (sessão 3) |
+| Message Flow ortogonal sem diagonais | Validado (sessão 3) |
+| BPMNLabel sem sobreposição na linha | Validado (sessão 3) |
+| Validar import visual no Bizagi | Pendente |
 
 ## Achados do Auditor (run 2026-05-16-000001)
 

@@ -19,7 +19,7 @@ Você receberá a transcrição de uma entrevista sobre um processo de negócio.
     { "id": "ator-01", "nome": "...", "tipo": "interno | externo | sistema" }
   ],
   "atividades": [
-    { "id": "ativ-01", "nome_bpmn": "...", "descricao": "...", "ator_responsavel": "ator-XX ou sis-XX", "sistema": "sis-XX ou null" }
+    { "id": "ativ-01", "nome_bpmn": "...", "descricao": "...", "ator_responsavel": "ator-XX ou sis-XX", "sistema": "sis-XX ou null", "task_type": "userTask | serviceTask | scriptTask" }
   ],
   "eventos": [
     { "id": "ev-01", "tipo": "start | end", "nome_bpmn": "...", "descricao": "..." }
@@ -82,6 +82,20 @@ Cada condição deve ter:
 - `destino_id`: o ID da atividade ou evento de destino (`ativ-XX` ou `ev-XX`)
 
 **Regra crítica**: use `"evento_fim"` apenas quando o processo realmente termina sem retorno possível. Se houver menção a "devolver", "corrigir", "tentar novamente" ou "buscar alternativa", use `"loop"` com `destino_id` apontando para a atividade de origem.
+
+## Classificação de tipo de tarefa (campo `task_type`)
+
+Classifique cada atividade com base em quem executa e como:
+
+- `"userTask"` — humano interno executa a etapa manualmente, sem mediação de sistema
+- `"serviceTask"` — sistema executa automaticamente, sem intervenção humana no momento da execução (ex: envio de e-mail automático, integração ERP, geração de NF eletrônica)
+- `"scriptTask"` — regra ou cálculo automático executado pelo próprio motor de processo (raro no AS-IS; use com cautela)
+
+**Regra prática para o AS-IS:**
+- Se `ator_responsavel` é um `sis-XX` → sempre `"serviceTask"`
+- Se `ator_responsavel` é humano E `sistema` não é null E a descrição usa verbos como "lançar", "registrar", "emitir" via sistema → `"serviceTask"` (o humano apenas inicia; o sistema executa)
+- Se `ator_responsavel` é humano E a etapa é julgamento, aprovação, análise ou contato interpessoal → `"userTask"`
+- Em caso de dúvida, use `"userTask"`
 
 ## Ator externo
 
