@@ -50,26 +50,26 @@
     <startEvent id="ev-01" name="Necessidade de compra" />
     <userTask id="ativ-01" name="Preencher formulário de requisição" />
     <userTask id="ativ-02" name="Aprovar requisição" />
-    <exclusiveGateway id="gw-01" name="Valor da compra" />
+    <exclusiveGateway id="gw-01" name="Valor acima de R$ 5.000?" />
     <userTask id="ativ-03" name="Verificar disponibilidade de orçamento" />
-    <exclusiveGateway id="gw-02" name="Disponibilidade de orçamento" />
+    <exclusiveGateway id="gw-02" name="Orçamento disponível?" />
     <userTask id="ativ-04" name="Devolver requisição com justificativa" />
-    <endEvent id="ev-03" name="Requisição devolvida (sem orçamento)" />
-    <userTask id="ativ-05" name="Pedir três cotações aos fornecedores" />
+    <endEvent id="ev-03" name="Requisição devolvida" />
+    <userTask id="ativ-05" name="Solicitar cotações aos fornecedores" />
     <userTask id="ativ-06" name="Validar cadastro do fornecedor" />
-    <exclusiveGateway id="gw-03" name="Fornecedor cadastrado" />
+    <exclusiveGateway id="gw-03" name="Fornecedor cadastrado?" />
     <userTask id="ativ-07" name="Incluir fornecedor no sistema" />
     <userTask id="ativ-08" name="Emitir pedido de compra" />
-    <serviceTask id="ativ-09" name="Enviar notificação automática ao fornecedor" />
+    <serviceTask id="ativ-09" name="Notificar fornecedor" />
     <userTask id="ativ-10" name="Confirmar prazo de entrega" />
     <userTask id="ativ-11" name="Conferir nota fiscal contra pedido" />
-    <exclusiveGateway id="gw-04" name="Conferência da nota fiscal" />
+    <exclusiveGateway id="gw-04" name="NF confere com pedido?" />
     <userTask id="ativ-12" name="Dar entrada no estoque" />
     <userTask id="ativ-13" name="Resolver divergência na entrega" />
-    <serviceTask id="ativ-14" name="Gerar documento de pagamento automaticamente" />
+    <serviceTask id="ativ-14" name="Gerar documento de pagamento" />
     <userTask id="ativ-15" name="Quitar pagamento" />
     <endEvent id="ev-02" name="Pagamento efetuado" />
-    <endEvent id="ev-04" name="Fluxo indefinido — divergência na entrega não especificada" />
+    <endEvent id="ev-04" name="Divergência sem resolução" />
 
     <sequenceFlow id="sf-ev01-ativ01" sourceRef="ev-01" targetRef="ativ-01" />
     <sequenceFlow id="sf-ativ01-ativ02" sourceRef="ativ-01" targetRef="ativ-02" />
