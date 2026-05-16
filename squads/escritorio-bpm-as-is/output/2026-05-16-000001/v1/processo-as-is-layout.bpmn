@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://escritorio-bpm/as-is"
+             id="definitions_as_is">
+  <collaboration id="collab_01">
+    <participant id="part-empresa" name="Processo de Compras - Aquisicao de Materiais e Servicos" processRef="proc_as_is"/>
+    <participant id="part-ator-03" name="Fornecedor" isExecutable="false"/>
+    <messageFlow id="mf-ativ-04-part-ator-03" name="Solicitar Cotação" sourceRef="ativ-04" targetRef="part-ator-03"/>
+    <messageFlow id="mf-part-ator-03-ativ-05" name="Enviar Orçamento" sourceRef="part-ator-03" targetRef="ativ-05"/>
+    <messageFlow id="mf-ativ-06-part-ator-03" name="Negociar Condições" sourceRef="ativ-06" targetRef="part-ator-03"/>
+    <messageFlow id="mf-ativ-09-part-ator-03" name="Enviar Pedido de Compra" sourceRef="ativ-09" targetRef="part-ator-03"/>
+    <messageFlow id="mf-part-ator-03-ativ-10" name="Confirmar Recebimento" sourceRef="part-ator-03" targetRef="ativ-10"/>
+    <messageFlow id="mf-ativ-11-part-ator-03" name="Follow-up" sourceRef="ativ-11" targetRef="part-ator-03"/>
+    <messageFlow id="mf-part-ator-03-ativ-12" name="Entregar Mercadoria e NF" sourceRef="part-ator-03" targetRef="ativ-12"/>
+  </collaboration>
+
+  <process id="proc_as_is" name="Processo de Compras - Aquisicao de Materiais e Servicos" isExecutable="false">
+    <laneSet id="ls_01">
+      <lane id="lane-ator-01" name="Solicitante">
+        <flowNodeRef>ev-01</flowNodeRef>
+        <flowNodeRef>ativ-01</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-02" name="Comprador (Departamento de Compras)">
+        <flowNodeRef>ativ-02</flowNodeRef>
+        <flowNodeRef>gw-01</flowNodeRef>
+        <flowNodeRef>ativ-03</flowNodeRef>
+        <flowNodeRef>gw-02</flowNodeRef>
+        <flowNodeRef>ativ-04</flowNodeRef>
+        <flowNodeRef>gw-03</flowNodeRef>
+        <flowNodeRef>ativ-05</flowNodeRef>
+        <flowNodeRef>gw-04</flowNodeRef>
+        <flowNodeRef>ativ-06</flowNodeRef>
+        <flowNodeRef>ativ-07</flowNodeRef>
+        <flowNodeRef>gw-05</flowNodeRef>
+        <flowNodeRef>ativ-09</flowNodeRef>
+        <flowNodeRef>ativ-10</flowNodeRef>
+        <flowNodeRef>gw-06</flowNodeRef>
+        <flowNodeRef>ativ-11</flowNodeRef>
+        <flowNodeRef>gw-07</flowNodeRef>
+        <flowNodeRef>ev-03</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-05" name="Gestor Aprovador">
+        <flowNodeRef>ativ-08</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-04" name="Almoxarifado / Recebimento">
+        <flowNodeRef>ativ-12</flowNodeRef>
+        <flowNodeRef>ativ-13</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-06" name="Financeiro">
+        <flowNodeRef>ativ-14</flowNodeRef>
+        <flowNodeRef>ev-02</flowNodeRef>
+      </lane>
+    </laneSet>
+
+    <startEvent id="ev-01" name="Necessidade de aquisicao identificada"/>
+
+    <userTask id="ativ-01" name="Emitir Requisicao de Compra"/>
+    
+    <sequenceFlow id="sf-ev-01-ativ-01" sourceRef="ev-01" targetRef="ativ-01"/>
+    <sequenceFlow id="sf-ativ-01-ativ-02" sourceRef="ativ-01" targetRef="ativ-02"/>
+
+    <userTask id="ativ-02" name="Analisar Requisicao de Compra"/>
+
+    <sequenceFlow id="sf-ativ-02-gw-01" sourceRef="ativ-02" targetRef="gw-01"/>
+
+    <exclusiveGateway id="gw-01" name="RC clara e completa?"/>
+    <sequenceFlow id="sf-gw-01-ativ-03" name="Sim" sourceRef="gw-01" targetRef="ativ-03">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-01-ativ-01" name="Nao" sourceRef="gw-01" targetRef="ativ-01">
+      <conditionExpression xsi:type="tFormalExpression">Nao</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="ativ-03" name="Identificar Fornecedores Aptos"/>
+    <sequenceFlow id="sf-ativ-03-gw-02" sourceRef="ativ-03" targetRef="gw-02"/>
+
+    <exclusiveGateway id="gw-02" name="Fornecedor ativo na carteira?"/>
+    <sequenceFlow id="sf-gw-02-ativ-04-sim" name="Sim" sourceRef="gw-02" targetRef="ativ-04">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-02-ativ-04-nao" name="Nao" sourceRef="gw-02" targetRef="ativ-04">
+      <conditionExpression xsi:type="tFormalExpression">Nao</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="ativ-04" name="Solicitar Cotacoes"/>
+    <sequenceFlow id="sf-ativ-04-gw-03" sourceRef="ativ-04" targetRef="gw-03"/>
+
+    <exclusiveGateway id="gw-03" name="Minimo de 3 orcamentos recebidos?"/>
+    <sequenceFlow id="sf-gw-03-ativ-05" name="Sim" sourceRef="gw-03" targetRef="ativ-05">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-03-ativ-04" name="Nao" sourceRef="gw-03" targetRef="ativ-04">
+      <conditionExpression xsi:type="tFormalExpression">Nao</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="ativ-05" name="Analisar Orcamentos Recebidos"/>
+    <sequenceFlow id="sf-ativ-05-gw-04" sourceRef="ativ-05" targetRef="gw-04"/>
+
+    <exclusiveGateway id="gw-04" name="Orcamento atende condicoes?"/>
+    <sequenceFlow id="sf-gw-04-ativ-07" name="Sim" sourceRef="gw-04" targetRef="ativ-07">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-04-ativ-06" name="Nao" sourceRef="gw-04" targetRef="ativ-06">
+      <conditionExpression xsi:type="tFormalExpression">Nao</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="ativ-06" name="Negociar com Fornecedor"/>
+    <sequenceFlow id="sf-ativ-06-ativ-07" sourceRef="ativ-06" targetRef="ativ-07"/>
+
+    <userTask id="ativ-07" name="Emitir Pedido de Compra"/>
+    <sequenceFlow id="sf-ativ-07-gw-05" sourceRef="ativ-07" targetRef="gw-05"/>
+
+    <exclusiveGateway id="gw-05" name="Exige aprovacao do gestor?"/>
+    <sequenceFlow id="sf-gw-05-ativ-08" name="Sim" sourceRef="gw-05" targetRef="ativ-08">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-05-ativ-09" name="Nao" sourceRef="gw-05" targetRef="ativ-09">
+      <conditionExpression xsi:type="tFormalExpression">Nao</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="ativ-08" name="Aprovar Pedido de Compra"/>
+    <sequenceFlow id="sf-ativ-08-ativ-09" sourceRef="ativ-08" targetRef="ativ-09"/>
+
+    <userTask id="ativ-09" name="Enviar PC ao Fornecedor"/>
+    <sequenceFlow id="sf-ativ-09-ativ-10" sourceRef="ativ-09" targetRef="ativ-10"/>
+
+    <userTask id="ativ-10" name="Confirmar Recebimento do PC"/>
+    <sequenceFlow id="sf-ativ-10-gw-06" sourceRef="ativ-10" targetRef="gw-06"/>
+
+    <exclusiveGateway id="gw-06" name="Fornecedor confirmou recebimento?"/>
+    <sequenceFlow id="sf-gw-06-ativ-11" name="Sim" sourceRef="gw-06" targetRef="ativ-11">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-06-ativ-10" name="Nao" sourceRef="gw-06" targetRef="ativ-10">
+      <conditionExpression xsi:type="tFormalExpression">Nao</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="ativ-11" name="Realizar Follow-up de Entrega"/>
+    <sequenceFlow id="sf-ativ-11-gw-07" sourceRef="ativ-11" targetRef="gw-07"/>
+
+    <exclusiveGateway id="gw-07" name="Entrega sera no prazo?"/>
+    <sequenceFlow id="sf-gw-07-ativ-12" name="Sim" sourceRef="gw-07" targetRef="ativ-12">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-07-ev-03" name="Nao" sourceRef="gw-07" targetRef="ev-03">
+      <conditionExpression xsi:type="tFormalExpression">Nao</conditionExpression>
+    </sequenceFlow>
+
+    <endEvent id="ev-03" name="Plano B acionado"/>
+
+    <userTask id="ativ-12" name="Receber Mercadoria e NF"/>
+    <sequenceFlow id="sf-ativ-12-ativ-13" sourceRef="ativ-12" targetRef="ativ-13"/>
+
+    <userTask id="ativ-13" name="Lancar NF no Sistema"/>
+    <sequenceFlow id="sf-ativ-13-ativ-14" sourceRef="ativ-13" targetRef="ativ-14"/>
+
+    <userTask id="ativ-14" name="Efetuar Pagamento"/>
+    <sequenceFlow id="sf-ativ-14-ev-02" sourceRef="ativ-14" targetRef="ev-02"/>
+
+    <endEvent id="ev-02" name="Pagamento efetuado"/>
+
+  </process>
+
+    <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="proc_as_is">
+    <bpmndi:BPMNShape id="pool_proc_as_is_di" bpmnElement="pool_proc_as_is" isHorizontal="true">
+      <dc:Bounds x="0" y="0" width="4310" height="600" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="lane-ator-01_di" bpmnElement="lane-ator-01" isHorizontal="true">
+      <dc:Bounds x="30" y="0" width="4280" height="120" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="lane-ator-02_di" bpmnElement="lane-ator-02" isHorizontal="true">
+      <dc:Bounds x="30" y="120" width="4280" height="120" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="lane-ator-05_di" bpmnElement="lane-ator-05" isHorizontal="true">
+      <dc:Bounds x="30" y="240" width="4280" height="120" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="lane-ator-04_di" bpmnElement="lane-ator-04" isHorizontal="true">
+      <dc:Bounds x="30" y="360" width="4280" height="120" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="lane-ator-06_di" bpmnElement="lane-ator-06" isHorizontal="true">
+      <dc:Bounds x="30" y="480" width="4280" height="120" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ev-01_di" bpmnElement="ev-01">
+      <dc:Bounds x="222" y="42" width="36" height="36" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ativ-01_di" bpmnElement="ativ-01">
+      <dc:Bounds x="360" y="30" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ativ-02_di" bpmnElement="ativ-02">
+      <dc:Bounds x="540" y="150" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="gw-01_di" bpmnElement="gw-01" isMarkerVisible="true">
+      <dc:Bounds x="755" y="155" width="50" height="50" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ativ-03_di" bpmnElement="ativ-03">
+      <dc:Bounds x="900" y="150" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="gw-02_di" bpmnElement="gw-02" isMarkerVisible="true">
+      <dc:Bounds x="1115" y="155" width="50" height="50" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ativ-04_di" bpmnElement="ativ-04">
+      <dc:Bounds x="1260" y="150" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="gw-03_di" bpmnElement="gw-03" isMarkerVisible="true">
+      <dc:Bounds x="1475" y="155" width="50" height="50" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ativ-05_di" bpmnElement="ativ-05">
+      <dc:Bounds x="1620" y="150" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="gw-04_di" bpmnElement="gw-04" isMarkerVisible="true">
+      <dc:Bounds x="1835" y="155" width="50" height="50" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ativ-06_di" bpmnElement="ativ-06">
+      <dc:Bounds x="1980" y="150" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ativ-07_di" bpmnElement="ativ-07">
+      <dc:Bounds x="2160" y="150" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="gw-05_di" bpmnElement="gw-05" isMarkerVisible="true">
+      <dc:Bounds x="2375" y="155" width="50" height="50" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ativ-08_di" bpmnElement="ativ-08">
+      <dc:Bounds x="2520" y="270" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ativ-09_di" bpmnElement="ativ-09">
+      <dc:Bounds x="2700" y="150" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ativ-10_di" bpmnElement="ativ-10">
+      <dc:Bounds x="2880" y="150" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="gw-06_di" bpmnElement="gw-06" isMarkerVisible="true">
+      <dc:Bounds x="3095" y="155" width="50" height="50" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ativ-11_di" bpmnElement="ativ-11">
+      <dc:Bounds x="3240" y="150" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="gw-07_di" bpmnElement="gw-07" isMarkerVisible="true">
+      <dc:Bounds x="3455" y="155" width="50" height="50" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ev-03_di" bpmnElement="ev-03">
+      <dc:Bounds x="3642" y="162" width="36" height="36" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ativ-12_di" bpmnElement="ativ-12">
+      <dc:Bounds x="3600" y="390" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ativ-13_di" bpmnElement="ativ-13">
+      <dc:Bounds x="3780" y="390" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ativ-14_di" bpmnElement="ativ-14">
+      <dc:Bounds x="3960" y="510" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ev-02_di" bpmnElement="ev-02">
+      <dc:Bounds x="4182" y="522" width="36" height="36" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="sf-ev-01-ativ-01_di" bpmnElement="sf-ev-01-ativ-01">
+      <di:waypoint x="258" y="60" />
+      <di:waypoint x="360" y="60" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-ativ-01-ativ-02_di" bpmnElement="sf-ativ-01-ativ-02">
+      <di:waypoint x="480" y="60" />
+      <di:waypoint x="510" y="60" />
+      <di:waypoint x="510" y="180" />
+      <di:waypoint x="540" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-ativ-02-gw-01_di" bpmnElement="sf-ativ-02-gw-01">
+      <di:waypoint x="660" y="180" />
+      <di:waypoint x="755" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-gw-01-ativ-03_di" bpmnElement="sf-gw-01-ativ-03">
+      <di:waypoint x="805" y="180" />
+      <di:waypoint x="900" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-gw-01-ativ-01_di" bpmnElement="sf-gw-01-ativ-01">
+      <di:waypoint x="780" y="205" />
+      <di:waypoint x="780" y="640" />
+      <di:waypoint x="420" y="640" />
+      <di:waypoint x="420" y="30" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-ativ-03-gw-02_di" bpmnElement="sf-ativ-03-gw-02">
+      <di:waypoint x="1020" y="180" />
+      <di:waypoint x="1115" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-gw-02-ativ-04-sim_di" bpmnElement="sf-gw-02-ativ-04-sim">
+      <di:waypoint x="1165" y="180" />
+      <di:waypoint x="1260" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-gw-02-ativ-04-nao_di" bpmnElement="sf-gw-02-ativ-04-nao">
+      <di:waypoint x="1165" y="180" />
+      <di:waypoint x="1260" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-ativ-04-gw-03_di" bpmnElement="sf-ativ-04-gw-03">
+      <di:waypoint x="1380" y="180" />
+      <di:waypoint x="1475" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-gw-03-ativ-05_di" bpmnElement="sf-gw-03-ativ-05">
+      <di:waypoint x="1525" y="180" />
+      <di:waypoint x="1620" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-gw-03-ativ-04_di" bpmnElement="sf-gw-03-ativ-04">
+      <di:waypoint x="1500" y="205" />
+      <di:waypoint x="1500" y="640" />
+      <di:waypoint x="1320" y="640" />
+      <di:waypoint x="1320" y="150" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-ativ-05-gw-04_di" bpmnElement="sf-ativ-05-gw-04">
+      <di:waypoint x="1740" y="180" />
+      <di:waypoint x="1835" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-gw-04-ativ-07_di" bpmnElement="sf-gw-04-ativ-07">
+      <di:waypoint x="1885" y="180" />
+      <di:waypoint x="2160" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-gw-04-ativ-06_di" bpmnElement="sf-gw-04-ativ-06">
+      <di:waypoint x="1885" y="180" />
+      <di:waypoint x="1980" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-ativ-06-ativ-07_di" bpmnElement="sf-ativ-06-ativ-07">
+      <di:waypoint x="2100" y="180" />
+      <di:waypoint x="2160" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-ativ-07-gw-05_di" bpmnElement="sf-ativ-07-gw-05">
+      <di:waypoint x="2280" y="180" />
+      <di:waypoint x="2375" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-gw-05-ativ-08_di" bpmnElement="sf-gw-05-ativ-08">
+      <di:waypoint x="2425" y="180" />
+      <di:waypoint x="2473" y="180" />
+      <di:waypoint x="2473" y="300" />
+      <di:waypoint x="2520" y="300" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-gw-05-ativ-09_di" bpmnElement="sf-gw-05-ativ-09">
+      <di:waypoint x="2425" y="180" />
+      <di:waypoint x="2700" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-ativ-08-ativ-09_di" bpmnElement="sf-ativ-08-ativ-09">
+      <di:waypoint x="2640" y="300" />
+      <di:waypoint x="2670" y="300" />
+      <di:waypoint x="2670" y="180" />
+      <di:waypoint x="2700" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-ativ-09-ativ-10_di" bpmnElement="sf-ativ-09-ativ-10">
+      <di:waypoint x="2820" y="180" />
+      <di:waypoint x="2880" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-ativ-10-gw-06_di" bpmnElement="sf-ativ-10-gw-06">
+      <di:waypoint x="3000" y="180" />
+      <di:waypoint x="3095" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-gw-06-ativ-11_di" bpmnElement="sf-gw-06-ativ-11">
+      <di:waypoint x="3145" y="180" />
+      <di:waypoint x="3240" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-gw-06-ativ-10_di" bpmnElement="sf-gw-06-ativ-10">
+      <di:waypoint x="3120" y="205" />
+      <di:waypoint x="3120" y="640" />
+      <di:waypoint x="2940" y="640" />
+      <di:waypoint x="2940" y="150" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-ativ-11-gw-07_di" bpmnElement="sf-ativ-11-gw-07">
+      <di:waypoint x="3360" y="180" />
+      <di:waypoint x="3455" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-gw-07-ativ-12_di" bpmnElement="sf-gw-07-ativ-12">
+      <di:waypoint x="3505" y="180" />
+      <di:waypoint x="3553" y="180" />
+      <di:waypoint x="3553" y="420" />
+      <di:waypoint x="3600" y="420" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-gw-07-ev-03_di" bpmnElement="sf-gw-07-ev-03">
+      <di:waypoint x="3505" y="180" />
+      <di:waypoint x="3642" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-ativ-12-ativ-13_di" bpmnElement="sf-ativ-12-ativ-13">
+      <di:waypoint x="3720" y="420" />
+      <di:waypoint x="3780" y="420" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-ativ-13-ativ-14_di" bpmnElement="sf-ativ-13-ativ-14">
+      <di:waypoint x="3900" y="420" />
+      <di:waypoint x="3930" y="420" />
+      <di:waypoint x="3930" y="540" />
+      <di:waypoint x="3960" y="540" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="sf-ativ-14-ev-02_di" bpmnElement="sf-ativ-14-ev-02">
+      <di:waypoint x="4080" y="540" />
+      <di:waypoint x="4182" y="540" />
+    </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

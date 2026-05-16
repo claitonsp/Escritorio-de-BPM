@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://escritorio-bpm/tobe"
+             id="definitions_tobe">
+  <collaboration id="collab_01">
+    <participant id="part-empresa" name="Processo de Compras - TO-BE" processRef="proc_tobe"/>
+    <participant id="part-ator-03" name="Fornecedor" isExecutable="false"/>
+    <messageFlow id="mf-ativ-04-part-ator-03" name="Solicitar Cotação" sourceRef="ativ-04" targetRef="part-ator-03"/>
+    <messageFlow id="mf-part-ator-03-ativ-05" name="Enviar Orçamento" sourceRef="part-ator-03" targetRef="ativ-05"/>
+    <messageFlow id="mf-ativ-06-part-ator-03" name="Negociar Condições" sourceRef="ativ-06" targetRef="part-ator-03"/>
+    <messageFlow id="mf-ativ-09-part-ator-03" name="Enviar Pedido de Compra" sourceRef="ativ-09" targetRef="part-ator-03"/>
+    <messageFlow id="mf-part-ator-03-ativ-10" name="Confirmar Recebimento (API/Link)" sourceRef="part-ator-03" targetRef="ativ-10"/>
+    <messageFlow id="mf-ativ-11-part-ator-03" name="Follow-up" sourceRef="ativ-11" targetRef="part-ator-03"/>
+    <messageFlow id="mf-part-ator-03-ativ-12" name="Entregar Mercadoria e NF" sourceRef="part-ator-03" targetRef="ativ-12"/>
+  </collaboration>
+
+  <process id="proc_tobe" name="Processo de Compras - Aquisicao de Materiais e Servicos - TO-BE" isExecutable="false">
+    <laneSet id="ls_01">
+      <lane id="lane-ator-01" name="Solicitante">
+        <flowNodeRef>ev-01</flowNodeRef>
+        <flowNodeRef>ativ-01</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-02" name="Comprador (Departamento de Compras)">
+        <flowNodeRef>ativ-02</flowNodeRef>
+        <flowNodeRef>gw-01</flowNodeRef>
+        <flowNodeRef>ativ-03</flowNodeRef>
+        <flowNodeRef>gw-08</flowNodeRef>
+        <flowNodeRef>gw-02</flowNodeRef>
+        <flowNodeRef>ativ-04</flowNodeRef>
+        <flowNodeRef>gw-03</flowNodeRef>
+        <flowNodeRef>ativ-05</flowNodeRef>
+        <flowNodeRef>gw-04</flowNodeRef>
+        <flowNodeRef>ativ-06</flowNodeRef>
+        <flowNodeRef>ativ-07</flowNodeRef>
+        <flowNodeRef>gw-05</flowNodeRef>
+        <flowNodeRef>ativ-09</flowNodeRef>
+        <flowNodeRef>ativ-10</flowNodeRef>
+        <flowNodeRef>gw-06</flowNodeRef>
+        <flowNodeRef>ativ-11</flowNodeRef>
+        <flowNodeRef>gw-07</flowNodeRef>
+        <flowNodeRef>gw-09</flowNodeRef>
+        <flowNodeRef>ev-03</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-05" name="Gestor Aprovador">
+        <flowNodeRef>ativ-08</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-04" name="Almoxarifado / Recebimento">
+        <flowNodeRef>ativ-12</flowNodeRef>
+        <flowNodeRef>ativ-13</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-06" name="Financeiro">
+        <flowNodeRef>ativ-14</flowNodeRef>
+        <flowNodeRef>ev-02</flowNodeRef>
+      </lane>
+    </laneSet>
+
+    <startEvent id="ev-01" name="Necessidade de aquisição identificada"/>
+
+    <userTask id="ativ-01" name="Emitir Requisição de Compra"/>
+    
+    <sequenceFlow id="sf-ev-01-ativ-01" sourceRef="ev-01" targetRef="ativ-01"/>
+    <sequenceFlow id="sf-ativ-01-ativ-02" sourceRef="ativ-01" targetRef="ativ-02"/>
+
+    <userTask id="ativ-02" name="Analisar RC com Check-list"/>
+
+    <sequenceFlow id="sf-ativ-02-gw-01" sourceRef="ativ-02" targetRef="gw-01"/>
+
+    <exclusiveGateway id="gw-01" name="RC clara e completa?"/>
+    <sequenceFlow id="sf-gw-01-ativ-03" name="Sim" sourceRef="gw-01" targetRef="ativ-03">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-01-ativ-01" name="Não" sourceRef="gw-01" targetRef="ativ-01">
+      <conditionExpression xsi:type="tFormalExpression">Não</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="ativ-03" name="Identificar Fornecedores Aptos"/>
+    <sequenceFlow id="sf-ativ-03-gw-08" sourceRef="ativ-03" targetRef="gw-08"/>
+
+    <exclusiveGateway id="gw-08" name="Compra recorrente/catálogo?"/>
+    <sequenceFlow id="sf-gw-08-ativ-07" name="Sim" sourceRef="gw-08" targetRef="ativ-07">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-08-gw-02" name="Não" sourceRef="gw-08" targetRef="gw-02">
+      <conditionExpression xsi:type="tFormalExpression">Não</conditionExpression>
+    </sequenceFlow>
+
+    <exclusiveGateway id="gw-02" name="Fornecedor ativo na carteira?"/>
+    <sequenceFlow id="sf-gw-02-ativ-04-sim" name="Sim" sourceRef="gw-02" targetRef="ativ-04">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-02-ativ-04-nao" name="Não" sourceRef="gw-02" targetRef="ativ-04">
+      <conditionExpression xsi:type="tFormalExpression">Não</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="ativ-04" name="Solicitar Cotações"/>
+    <sequenceFlow id="sf-ativ-04-gw-03" sourceRef="ativ-04" targetRef="gw-03"/>
+
+    <exclusiveGateway id="gw-03" name="Mínimo de 3 orçamentos?"/>
+    <sequenceFlow id="sf-gw-03-ativ-05" name="Sim" sourceRef="gw-03" targetRef="ativ-05">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-03-ativ-04" name="Não" sourceRef="gw-03" targetRef="ativ-04">
+      <conditionExpression xsi:type="tFormalExpression">Não</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="ativ-05" name="Analisar Orçamentos Recebidos"/>
+    <sequenceFlow id="sf-ativ-05-gw-04" sourceRef="ativ-05" targetRef="gw-04"/>
+
+    <exclusiveGateway id="gw-04" name="Orçamento atende condições?"/>
+    <sequenceFlow id="sf-gw-04-ativ-07" name="Sim" sourceRef="gw-04" targetRef="ativ-07">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-04-ativ-06" name="Não" sourceRef="gw-04" targetRef="ativ-06">
+      <conditionExpression xsi:type="tFormalExpression">Não</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="ativ-06" name="Negociar com Fornecedor"/>
+    <sequenceFlow id="sf-ativ-06-ativ-07" sourceRef="ativ-06" targetRef="ativ-07"/>
+
+    <userTask id="ativ-07" name="Emitir Pedido de Compra"/>
+    <sequenceFlow id="sf-ativ-07-gw-05" sourceRef="ativ-07" targetRef="gw-05"/>
+
+    <exclusiveGateway id="gw-05" name="Exige aprovação do gestor?"/>
+    <sequenceFlow id="sf-gw-05-ativ-08" name="Sim" sourceRef="gw-05" targetRef="ativ-08">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-05-ativ-09" name="Não" sourceRef="gw-05" targetRef="ativ-09">
+      <conditionExpression xsi:type="tFormalExpression">Não</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="ativ-08" name="Aprovar Pedido de Compra"/>
+    <sequenceFlow id="sf-ativ-08-ativ-09" sourceRef="ativ-08" targetRef="ativ-09"/>
+
+    <userTask id="ativ-09" name="Enviar PC ao Fornecedor"/>
+    <sequenceFlow id="sf-ativ-09-ativ-10" sourceRef="ativ-09" targetRef="ativ-10"/>
+
+    <serviceTask id="ativ-10" name="Confirmar Recebimento Automático"/>
+    <sequenceFlow id="sf-ativ-10-gw-06" sourceRef="ativ-10" targetRef="gw-06"/>
+
+    <exclusiveGateway id="gw-06" name="Fornecedor confirmou?"/>
+    <sequenceFlow id="sf-gw-06-ativ-11" name="Sim" sourceRef="gw-06" targetRef="ativ-11">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-06-ativ-10" name="Não" sourceRef="gw-06" targetRef="ativ-10">
+      <conditionExpression xsi:type="tFormalExpression">Não</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="ativ-11" name="Realizar Follow-up de Entrega"/>
+    <sequenceFlow id="sf-ativ-11-gw-07" sourceRef="ativ-11" targetRef="gw-07"/>
+
+    <exclusiveGateway id="gw-07" name="Entrega será no prazo?"/>
+    <sequenceFlow id="sf-gw-07-ativ-12" name="Sim" sourceRef="gw-07" targetRef="ativ-12">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-07-gw-09" name="Não" sourceRef="gw-07" targetRef="gw-09">
+      <conditionExpression xsi:type="tFormalExpression">Não</conditionExpression>
+    </sequenceFlow>
+
+    <exclusiveGateway id="gw-09" name="Existe segundo fornecedor?"/>
+    <sequenceFlow id="sf-gw-09-ativ-07" name="Sim" sourceRef="gw-09" targetRef="ativ-07">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw-09-ev-03" name="Não" sourceRef="gw-09" targetRef="ev-03">
+      <conditionExpression xsi:type="tFormalExpression">Não</conditionExpression>
+    </sequenceFlow>
+
+    <endEvent id="ev-03" name="Plano B acionado"/>
+
+    <userTask id="ativ-12" name="Receber Mercadoria e NF"/>
+    <sequenceFlow id="sf-ativ-12-ativ-13" sourceRef="ativ-12" targetRef="ativ-13"/>
+
+    <serviceTask id="ativ-13" name="Lançar NF via OCR/XML"/>
+    <sequenceFlow id="sf-ativ-13-ativ-14" sourceRef="ativ-13" targetRef="ativ-14"/>
+
+    <userTask id="ativ-14" name="Efetuar Pagamento"/>
+    <sequenceFlow id="sf-ativ-14-ev-02" sourceRef="ativ-14" targetRef="ev-02"/>
+
+    <endEvent id="ev-02" name="Pagamento efetuado"/>
+
+  </process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="collab_01">
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

@@ -1,0 +1,81 @@
+{
+  "processo": "Processo de Compras - Aquisicao de Materiais e Servicos",
+  "resumo_executivo": "O processo apresenta uma estrutura sequencial bem definida, mas com alto índice de dependência humana em etapas burocráticas, como a confirmação de recebimento de pedidos e follow-up. Há pontos críticos de desperdício por espera na fase de cotações e riscos de conformidade no encerramento abrupto do fluxo quando o prazo de entrega não é cumprido. A fragmentação em cinco atores internos gera diversos handoffs que podem atrasar o lead time total da compra.",
+  "metricas_estruturais": {
+    "total_atividades": 14,
+    "atividades_manuais": 10,
+    "atividades_automaticas": 4,
+    "total_handoffs": 5,
+    "total_gateways": 7,
+    "caminhos_indefinidos": 0,
+    "atores_internos": 5,
+    "atores_externos": 1
+  },
+  "achados": [
+    {
+      "id": "ach-01",
+      "framework": "Lean",
+      "categoria": "desperdicio_espera",
+      "descricao": "Bloqueio do fluxo aguardando o recebimento de no mínimo 3 orçamentos externos.",
+      "elementos_relacionados": ["ativ-04", "gw-03"],
+      "impacto_potencial": "Atraso no início da análise de orçamentos e aumento do lead time de compra para materiais urgentes.",
+      "prioridade": "media",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "Regra de negócio rn-01 e gateway gw-03 explicitam a exigência mínima de 3 orçamentos.",
+      "recomendacao": "Avaliar o uso de catálogo de preços ou fornecedores homologados para compras recorrentes, eliminando a necessidade de cotação tripla em todos os casos."
+    },
+    {
+      "id": "ach-02",
+      "framework": "Lean",
+      "categoria": "desperdicio_superprocessamento",
+      "descricao": "Atividade manual para confirmar se o fornecedor recebeu o pedido (ligação telefônica).",
+      "elementos_relacionados": ["ativ-10", "gw-06"],
+      "impacto_potencial": "Uso ineficiente do tempo do comprador em tarefas de baixo valor agregado que poderiam ser automatizadas.",
+      "prioridade": "media",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "A atividade ativ-10 descreve explicitamente o uso de telefone para confirmação.",
+      "recomendacao": "Implementar confirmação automática via portal de fornecedor ou integração EDI/E-mail com link de confirmação."
+    },
+    {
+      "id": "ach-03",
+      "framework": "CBOK",
+      "categoria": "handoff",
+      "descricao": "Fragmentação do processo em múltiplos atores internos (5 atores) para um fluxo linear.",
+      "elementos_relacionados": ["ator-01", "ator-02", "ator-04", "ator-05", "ator-06"],
+      "impacto_potencial": "Perda de contexto entre etapas e aumento da latência entre o lançamento da NF e o pagamento efetivo.",
+      "prioridade": "baixa",
+      "confiabilidade": "media",
+      "justificativa_confiabilidade": "Inferência baseada no número de atores internos definidos e na sequência de atividades ativ-13 para ativ-14.",
+      "recomendacao": "Avaliar a unificação de etapas de conferência e lançamento ou automatização do de-para entre XML da NF e Pedido de Compra."
+    },
+    {
+      "id": "ach-04",
+      "framework": "ISO9001",
+      "categoria": "nao_conformidade",
+      "descricao": "Tratamento de exceção de prazo de entrega (Plano B) resulta no encerramento do processo sem resolução.",
+      "elementos_relacionados": ["gw-07", "ev-03"],
+      "impacto_potencial": "Perda de rastreabilidade do atendimento da necessidade inicial do solicitante e necessidade de reiniciar todo o processo manualmente.",
+      "prioridade": "alta",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "O evento ev-03 encerra o processo conforme descrito na transcrição.",
+      "recomendacao": "Criar um fluxo de contingência que permita selecionar o segundo melhor orçador sem reiniciar o processo do zero (ativ-01)."
+    },
+    {
+      "id": "ach-05",
+      "framework": "CBOK",
+      "categoria": "controle",
+      "descricao": "Falta de critérios objetivos para 'Analisar Requisição de Compra' além da clareza da descrição.",
+      "elementos_relacionados": ["ativ-02", "gw-01"],
+      "impacto_potencial": "Subjetividade na análise do comprador, podendo gerar retrabalho desnecessário ou aprovação de compras tecnicamente incorretas.",
+      "prioridade": "media",
+      "confiabilidade": "media",
+      "justificativa_confiabilidade": "A descrição de ativ-02 é genérica quanto aos critérios de 'adequação'.",
+      "recomendacao": "Estabelecer check-list técnico obrigatório ou mestre de materiais para padronização das requisições."
+    }
+  ],
+  "observacoes_metodologicas": [
+    "Análise baseada em uma única fonte de elicitação; volumes e tempos médios não foram fornecidos.",
+    "A distinção entre atividades automáticas e manuais seguiu a menção a sistemas (sis-01) no JSON de entrada.",
+    "Recomenda-se workshop de validação com os atores envolvidos para confirmar a frequência dos desperdícios de espera (Waiting) e defeitos (Retrabalho na RC)."
+  ]
+}

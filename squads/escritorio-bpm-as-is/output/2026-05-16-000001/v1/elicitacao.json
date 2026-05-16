@@ -1,0 +1,316 @@
+{
+  "processo": "Processo de Compras - Aquisicao de Materiais e Servicos",
+  "atores": [
+    { "id": "ator-01", "nome": "Solicitante", "tipo": "interno" },
+    { "id": "ator-02", "nome": "Comprador (Departamento de Compras)", "tipo": "interno" },
+    { "id": "ator-03", "nome": "Fornecedor", "tipo": "externo" },
+    { "id": "ator-04", "nome": "Almoxarifado / Recebimento", "tipo": "interno" },
+    { "id": "ator-05", "nome": "Gestor Aprovador", "tipo": "interno" },
+    { "id": "ator-06", "nome": "Financeiro", "tipo": "interno" }
+  ],
+  "atividades": [
+    {
+      "id": "ativ-01",
+      "nome_bpmn": "Emitir Requisicao de Compra",
+      "descricao": "Solicitante emite Requisicao de Compra (RC) via ERP com descricao do material, quantidade e data de necessidade",
+      "ator_responsavel": "ator-01",
+      "sistema": "sis-01"
+    },
+    {
+      "id": "ativ-02",
+      "nome_bpmn": "Analisar Requisicao de Compra",
+      "descricao": "Comprador analisa a RC verificando especificacoes, clareza e adequacao do material solicitado",
+      "ator_responsavel": "ator-02",
+      "sistema": null
+    },
+    {
+      "id": "ativ-03",
+      "nome_bpmn": "Identificar Fornecedores Aptos",
+      "descricao": "Comprador identifica e seleciona fornecedores aptos para o material: carteira ativa ou desenvolvimento de novos",
+      "ator_responsavel": "ator-02",
+      "sistema": null
+    },
+    {
+      "id": "ativ-04",
+      "nome_bpmn": "Solicitar Cotacoes",
+      "descricao": "Comprador solicita cotacoes/orcamentos a no minimo 3 fornecedores",
+      "ator_responsavel": "ator-02",
+      "sistema": null
+    },
+    {
+      "id": "ativ-05",
+      "nome_bpmn": "Analisar Orcamentos Recebidos",
+      "descricao": "Comprador analisa orcamentos verificando preco unitario, total, tributos, regime tributario, condicao de pagamento e prazo de entrega",
+      "ator_responsavel": "ator-02",
+      "sistema": null
+    },
+    {
+      "id": "ativ-06",
+      "nome_bpmn": "Negociar com Fornecedor",
+      "descricao": "Comprador negocia condicoes com o fornecedor selecionado: preco, prazo de entrega e condicao de pagamento",
+      "ator_responsavel": "ator-02",
+      "sistema": null
+    },
+    {
+      "id": "ativ-07",
+      "nome_bpmn": "Emitir Pedido de Compra",
+      "descricao": "Comprador emite Pedido de Compra (PC) fiel ao orcamento negociado: descricao, quantidade, valor unitario, impostos, condicao de pagamento e data de entrega",
+      "ator_responsavel": "ator-02",
+      "sistema": "sis-01"
+    },
+    {
+      "id": "ativ-08",
+      "nome_bpmn": "Aprovar Pedido de Compra",
+      "descricao": "Gestor Aprovador aprova o PC alinhando com orcamento anual e controle de gastos mensais",
+      "ator_responsavel": "ator-05",
+      "sistema": null
+    },
+    {
+      "id": "ativ-09",
+      "nome_bpmn": "Enviar PC ao Fornecedor",
+      "descricao": "Comprador envia o Pedido de Compra formal ao fornecedor via e-mail ou sistema",
+      "ator_responsavel": "ator-02",
+      "sistema": "sis-01"
+    },
+    {
+      "id": "ativ-10",
+      "nome_bpmn": "Confirmar Recebimento do PC",
+      "descricao": "Comprador confirma se o fornecedor recebeu o Pedido de Compra; se nao respondeu, liga para confirmar",
+      "ator_responsavel": "ator-02",
+      "sistema": null
+    },
+    {
+      "id": "ativ-11",
+      "nome_bpmn": "Realizar Follow-up de Entrega",
+      "descricao": "Comprador realiza acompanhamento dos pedidos conforme datas de entrega, no minimo 1 semana antes do vencimento",
+      "ator_responsavel": "ator-02",
+      "sistema": null
+    },
+    {
+      "id": "ativ-12",
+      "nome_bpmn": "Receber Mercadoria e NF",
+      "descricao": "Almoxarifado recebe a mercadoria e confere a nota fiscal conforme o Pedido de Compra",
+      "ator_responsavel": "ator-04",
+      "sistema": null
+    },
+    {
+      "id": "ativ-13",
+      "nome_bpmn": "Lancar NF no Sistema",
+      "descricao": "Almoxarifado lanca a nota fiscal no sistema para que o Financeiro efetue o pagamento",
+      "ator_responsavel": "ator-04",
+      "sistema": "sis-01"
+    },
+    {
+      "id": "ativ-14",
+      "nome_bpmn": "Efetuar Pagamento",
+      "descricao": "Financeiro efetua o pagamento ao fornecedor conforme a nota fiscal lancada",
+      "ator_responsavel": "ator-06",
+      "sistema": null
+    }
+  ],
+  "eventos": [
+    {
+      "id": "ev-01",
+      "tipo": "start",
+      "nome_bpmn": "Necessidade de aquisicao identificada",
+      "descricao": "Surge a necessidade de aquisicao de material ou servico por alguma area da empresa"
+    },
+    {
+      "id": "ev-02",
+      "tipo": "end",
+      "nome_bpmn": "Pagamento efetuado",
+      "descricao": "Nota fiscal lancada no sistema e pagamento efetuado pelo Financeiro - encerramento da compra"
+    },
+    {
+      "id": "ev-03",
+      "tipo": "end",
+      "nome_bpmn": "Plano B acionado",
+      "descricao": "Fornecedor nao consegue entregar na data combinada - processo encerra com acionamento de fornecedor alternativo"
+    }
+  ],
+  "gateways": [
+    {
+      "id": "gw-01",
+      "tipo": "exclusive",
+      "nome_bpmn": "RC clara e completa?",
+      "descricao": "Requisicao de Compra esta clara e com especificacoes corretas?",
+      "condicoes": [
+        {
+          "label": "Sim",
+          "descricao": "RC esta clara, especificacoes corretas: prosseguir para identificacao de fornecedores",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-03"
+        },
+        {
+          "label": "Nao",
+          "descricao": "RC incompleta ou com especificacoes incorretas: devolver ao Solicitante para correcao e reemissao",
+          "destino_tipo": "loop",
+          "destino_id": "ativ-01"
+        }
+      ]
+    },
+    {
+      "id": "gw-02",
+      "tipo": "exclusive",
+      "nome_bpmn": "Fornecedor ativo na carteira?",
+      "descricao": "Existe fornecedor ativo na carteira com historico para este material?",
+      "condicoes": [
+        {
+          "label": "Sim",
+          "descricao": "Fornecedor ativo disponivel: utilizar historico e solicitar cotacao",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-04"
+        },
+        {
+          "label": "Nao",
+          "descricao": "Nenhum fornecedor ativo para este material: desenvolver novo fornecedor e solicitar cotacao",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-04"
+        }
+      ]
+    },
+    {
+      "id": "gw-03",
+      "tipo": "exclusive",
+      "nome_bpmn": "Minimo de 3 orcamentos recebidos?",
+      "descricao": "O departamento recebeu no minimo 3 orcamentos para este material?",
+      "condicoes": [
+        {
+          "label": "Sim",
+          "descricao": "Minimo de 3 orcamentos atingido: prosseguir para analise",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-05"
+        },
+        {
+          "label": "Nao",
+          "descricao": "Menos de 3 orcamentos recebidos: buscar fornecedor adicional e solicitar nova cotacao",
+          "destino_tipo": "loop",
+          "destino_id": "ativ-04"
+        }
+      ]
+    },
+    {
+      "id": "gw-04",
+      "tipo": "exclusive",
+      "nome_bpmn": "Orcamento atende condicoes?",
+      "descricao": "Orcamento atende condicoes da empresa: preco, tributos e prazo de pagamento?",
+      "condicoes": [
+        {
+          "label": "Sim",
+          "descricao": "Orcamento aprovado: prosseguir para emissao do Pedido de Compra",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-07"
+        },
+        {
+          "label": "Nao",
+          "descricao": "Orcamento nao atende: negociar condicoes com o fornecedor selecionado",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-06"
+        }
+      ]
+    },
+    {
+      "id": "gw-05",
+      "tipo": "exclusive",
+      "nome_bpmn": "Exige aprovacao do gestor?",
+      "descricao": "A empresa exige aprovacao do Pedido de Compra por gestor?",
+      "condicoes": [
+        {
+          "label": "Sim",
+          "descricao": "Empresa exige aprovacao: encaminhar PC ao Gestor Aprovador",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-08"
+        },
+        {
+          "label": "Nao",
+          "descricao": "Sem exigencia de aprovacao: enviar PC diretamente ao fornecedor",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-09"
+        }
+      ]
+    },
+    {
+      "id": "gw-06",
+      "tipo": "exclusive",
+      "nome_bpmn": "Fornecedor confirmou recebimento?",
+      "descricao": "O fornecedor confirmou o recebimento do Pedido de Compra?",
+      "condicoes": [
+        {
+          "label": "Sim",
+          "descricao": "PC confirmado pelo fornecedor: iniciar follow-up de entrega",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-11"
+        },
+        {
+          "label": "Nao",
+          "descricao": "Sem confirmacao: contatar fornecedor por telefone para confirmar recebimento",
+          "destino_tipo": "loop",
+          "destino_id": "ativ-10"
+        }
+      ]
+    },
+    {
+      "id": "gw-07",
+      "tipo": "exclusive",
+      "nome_bpmn": "Entrega sera no prazo?",
+      "descricao": "Fornecedor consegue entregar na data combinada?",
+      "condicoes": [
+        {
+          "label": "Sim",
+          "descricao": "Fornecedor confirma entrega na data: aguardar e receber mercadoria",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-12"
+        },
+        {
+          "label": "Nao",
+          "descricao": "Fornecedor nao consegue entregar no prazo: acionar plano B com fornecedor alternativo",
+          "destino_tipo": "evento_fim",
+          "destino_id": "ev-03"
+        }
+      ]
+    }
+  ],
+  "sistemas": [
+    { "id": "sis-01", "nome": "ERP / Sistema de Gestao (IRP)", "tipo": "ERP" }
+  ],
+  "regras_de_negocio": [
+    {
+      "id": "rn-01",
+      "descricao": "O departamento de compras exige no minimo 3 orcamentos por compra para ter parametro de preco de mercado",
+      "atividade_relacionada": "ativ-04"
+    },
+    {
+      "id": "rn-02",
+      "descricao": "A condicao de pagamento negociada com o fornecedor deve ser superior ao prazo de venda da empresa (ex: se vende a 30 dias, compra com prazo maior que 30 dias) para garantir fluxo financeiro saudavel",
+      "atividade_relacionada": "ativ-06"
+    },
+    {
+      "id": "rn-03",
+      "descricao": "O Pedido de Compra deve ser fiel ao orcamento negociado: descricao, quantidade, valor unitario, impostos, condicao de pagamento e data de entrega",
+      "atividade_relacionada": "ativ-07"
+    },
+    {
+      "id": "rn-04",
+      "descricao": "O follow-up de entrega deve ser realizado no minimo 1 semana antes da data prevista, ou conforme criticidade do produto",
+      "atividade_relacionada": "ativ-11"
+    },
+    {
+      "id": "rn-05",
+      "descricao": "O ciclo de compras encerra somente apos recebimento da mercadoria, da nota fiscal e lancamento no sistema para pagamento",
+      "atividade_relacionada": "ativ-13"
+    },
+    {
+      "id": "rn-06",
+      "descricao": "A RC deve ter clareza total sobre especificacoes do material antes de iniciar cotacao",
+      "atividade_relacionada": "ativ-02"
+    }
+  ],
+  "observacoes": [
+    "O sistema ERP/IRP e mencionado para emissao de RC e PC, mas o nome do sistema nao e especificado na transcricao.",
+    "A aprovacao do PC por gestor e opcional - algumas empresas adotam, outras nao.",
+    "O processo descreve compras de materiais/materia-prima; variacoes para servicos nao sao detalhadas.",
+    "Nao ha mencao a processo de devolucao, divergencias na nota fiscal ou reclamacoes de qualidade no AS-IS.",
+    "Fornecedor classificado como externo: sera representado como Pool Black Box com Message Flows.",
+    "Ambas as saidas de gw-02 convergem para ativ-04 pois o desenvolvimento de novo fornecedor esta implicitamente incluido em ativ-03."
+  ]
+}

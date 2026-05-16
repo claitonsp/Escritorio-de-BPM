@@ -37,39 +37,43 @@ Layout visual gerado por `bpmn-layout.js` (script Node.js local, sem dependênci
 
 ## Estado atual do projeto (2026-05-16)
 
-### Run concluída: `output/2026-05-15-000002/v1/`
+### Run de validação: `output/2026-05-16-000001/v1/`
 
-Pipeline completo executado com transcrição real (Camila Evers, YouTube — Processo de Compras):
+Pipeline AS-IS executado com a mesma transcrição (Camila Evers, YouTube — Processo de Compras) para validar todas as regras atualizadas nos prompts:
 
 ```
 ✅ Step 01 — Elicitador       → elicitacao.json (14 ativ, 7 gw, 6 atores, 1 ERP)
 ✅ Step 02 — Checkpoint       → aprovado
 ✅ Step 03 — Modelador        → processo-as-is.bpmn
 ✅ bpmn-layout.js             → processo-as-is-layout.bpmn
-✅ Step 04 — Checkpoint BPMN  → aprovado (com correções manuais de nomenclatura)
-✅ Step 05 — Auditor          → diagnostico-as-is.json (9 achados: 4 alta, 3 média, 2 baixa)
+✅ Step 04 — Checkpoint BPMN  → aprovado (2 correções automáticas detectadas pelo grep)
+✅ Step 05 — Auditor          → diagnostico-as-is.json (5 achados: 1 alta, 3 média, 1 baixa)
 ✅ Step 06 — Checkpoint Audit → aprovado
-✅ Step 07 — TO-BE Designer   → processo-tobe.bpmn
-✅ bpmn-layout.js             → processo-tobe-layout.bpmn
-✅ Step 08 — Checkpoint TO-BE → aprovado (com correções manuais de nomenclatura)
 ```
 
-### Principais achados do Auditor (run 2026-05-15-000002)
+O TO-BE é produzido manualmente a partir do diagnóstico. Não faz parte do pipeline automatizado.
 
-- **ach-01** (Lean, Alta): confirmação do PC passiva — risco de pedido nunca chegar ao fornecedor
-- **ach-02** (CBOK, Alta): loop gw-03 sem limite de iterações — risco de ciclo infinito
-- **ach-03** (ISO9001, Alta): ativ-12 sem gateway de conformidade — NF pode ser lançada com mercadoria errada
-- **ach-05** (CBOK, Alta): rn-02 sem controle sistêmico — prazo de pagamento pode violar regra de fluxo de caixa
-- Demais: follow-up manual, rastreabilidade de cotações, SLA handoff Almoxarifado→Financeiro
+### O que foi validado nesta run
 
-### Melhorias implementadas no TO-BE
+- `nome_bpmn` curto gerado corretamente pelo Elicitador (máx 4 palavras)
+- `condicoes` estruturadas com `label`, `destino_tipo` e `destino_id`
+- Fornecedor como Pool Black Box — zero Lane vazia
+- Todos os gateways com `name="Sim"` / `name="Não"` nas saídas
+- Loops modelados como Sequence Flow de retorno (sem End Event)
+- Checkpoint detectou automaticamente `serviceTask` incorretos em ativ-01 e ativ-07
+- `bpmn-layout.js` renderizou corretamente no bpmn.io
 
-- gw-03b: limite de 2 ciclos de cotação antes de escalar
-- ativ-05b: mapa comparativo de cotações obrigatório
-- gw-07b: validação sistêmica da regra de condição de pagamento (rn-02)
-- gw-08 + ativ-12b: gateway de conformidade no recebimento + devolução formal
-- ativ-11: follow-up convertido para serviceTask (monitoramento automático via ERP)
-- ativ-13: lançamento de NF com SLA D+1
+### Achados do Auditor (run 2026-05-16-000001)
+
+- **ach-01** (Lean, Media): bloqueio aguardando 3 orçamentos — catálogo de preços para compras recorrentes
+- **ach-02** (Lean, Media): confirmação de recebimento do PC manual — automatizar via portal/EDI
+- **ach-03** (CBOK, Baixa): 5 atores internos gerando handoffs — avaliar unificação ou automação
+- **ach-04** (ISO9001, Alta): Plano B encerra processo sem resolução — criar sub-fluxo de contingência
+- **ach-05** (CBOK, Media): critérios subjetivos na análise da RC — check-list técnico obrigatório
+
+### Run anterior: `output/2026-05-15-000002/v1/`
+
+Run completa (AS-IS + Auditoria + TO-BE) executada antes das atualizações de prompt. Serviu como baseline. TO-BE desta run tem Fornecedor ainda como Lane vazia e nomes longos nos elementos.
 
 ## Arquitetura dos agentes (estado atual dos prompts)
 
@@ -128,30 +132,25 @@ Constantes principais: `POOL_LABEL_W=30`, `LANE_LABEL_W=120`, `LANE_H=120`, `COL
 
 Limitação conhecida: back-edges (loops) são roteados abaixo das lanes (y=960), criando linhas longas. Não bloqueante para uso atual.
 
-## Problema em aberto: Fornecedor como Pool Black Box
+## Status das regras BPMN
 
-As regras foram escritas nos prompts (01-elicitador, 03-modelador, 07-tobe) mas **ainda não foram testadas em uma run completa**. A run 2026-05-15-000002 foi gerada com as regras antigas — o Fornecedor ainda apareceu como Lane vazia.
+Todas as regras abaixo foram validadas na run 2026-05-16-000001:
 
-A próxima run irá validar se os agentes seguem as regras automaticamente. Se não seguirem, a estratégia é reforçar os greps do checkpoint para bloquear e forçar correção antes de avançar.
-
-## Problema em aberto: erros BPMN 2.0 estruturais (identificados por análise comparativa)
-
-Análise comparando o diagrama gerado com referência de mercado identificou:
-1. Externo como Lane (resolvido nos prompts, não testado ainda)
-2. Gateway sem rótulos Sim/Não nas saídas (resolvido nos prompts)
-3. Loops terminando em End Event ao invés de retornar (resolvido nos prompts)
-4. Message Flows ausentes para interações com externos (regra adicionada ao Modelador)
-5. Checkpoints agora têm greps automáticos para detectar esses problemas antes de avançar
+| Regra | Status |
+|---|---|
+| Externo como Pool Black Box (nunca Lane) | Validado |
+| Gateway com Sim/Não nas saídas | Validado |
+| Loops como Sequence Flow de retorno | Validado |
+| `name=` usa `nome_bpmn` curto | Validado |
+| Lane vazia proibida | Validado |
+| Checkpoint detecta serviceTask incorreto | Validado |
+| Message Flows para atores externos | Validado |
 
 ## Próxima ação recomendada
 
-**Testar o pipeline completo com uma nova transcrição** para validar todas as mudanças desta sessão:
-1. Elicitador gera `nome_bpmn` e `condicoes` estruturadas
-2. Modelador produz Fornecedor como Pool Black Box (não Lane)
-3. Gateways têm Sim/Não nos fluxos de saída
-4. Checkpoints detectam e bloqueiam erros automaticamente sem intervenção manual
+O pipeline AS-IS está estável. Para uma nova run, basta colocar a transcrição em `squads/escritorio-bpm-as-is/input/` e seguir os steps do pipeline.
 
-Input sugerido: qualquer transcrição nova em `squads/escritorio-bpm-as-is/input/`.
+O TO-BE é produzido manualmente pelo analista a partir do `diagnostico-as-is.json`.
 
 ## Regras de estilo invioláveis
 
