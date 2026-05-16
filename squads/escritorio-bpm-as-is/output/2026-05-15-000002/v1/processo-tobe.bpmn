@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://escritorio-bpm/tobe"
+             id="definitions_tobe">
+
+  <process id="proc_tobe" name="Processo de Compras — Aquisição de Materiais e Serviços (TO-BE)" isExecutable="false">
+    <laneSet id="ls_01">
+
+      <!-- Lane: Solicitante -->
+      <lane id="lane-ator-01" name="Solicitante">
+        <flowNodeRef>ev-01</flowNodeRef>
+        <flowNodeRef>ativ-01</flowNodeRef>
+        <flowNodeRef>ev-04</flowNodeRef>
+      </lane>
+
+      <!-- Lane: Comprador -->
+      <lane id="lane-ator-02" name="Comprador (Departamento de Compras)">
+        <flowNodeRef>gw-01</flowNodeRef>
+        <flowNodeRef>ativ-02</flowNodeRef>
+        <flowNodeRef>ativ-03</flowNodeRef>
+        <flowNodeRef>ativ-04</flowNodeRef>
+        <flowNodeRef>gw-02</flowNodeRef>
+        <flowNodeRef>gw-03</flowNodeRef>
+        <flowNodeRef>gw-03b</flowNodeRef>
+        <flowNodeRef>ativ-05</flowNodeRef>
+        <flowNodeRef>ativ-05b</flowNodeRef>
+        <flowNodeRef>ativ-06</flowNodeRef>
+        <flowNodeRef>gw-04</flowNodeRef>
+        <flowNodeRef>ativ-07</flowNodeRef>
+        <flowNodeRef>gw-07b</flowNodeRef>
+        <flowNodeRef>gw-05</flowNodeRef>
+        <flowNodeRef>ativ-09</flowNodeRef>
+        <flowNodeRef>ativ-10</flowNodeRef>
+        <flowNodeRef>gw-06</flowNodeRef>
+        <flowNodeRef>ativ-11</flowNodeRef>
+        <flowNodeRef>gw-07</flowNodeRef>
+        <flowNodeRef>ev-03</flowNodeRef>
+        <flowNodeRef>ev-07</flowNodeRef>
+      </lane>
+
+      <!-- Lane: Gestor Aprovador -->
+      <lane id="lane-ator-05" name="Gestor Aprovador">
+        <flowNodeRef>ativ-08</flowNodeRef>
+      </lane>
+
+      <!-- Lane: Almoxarifado / Recebimento -->
+      <lane id="lane-ator-04" name="Almoxarifado / Recebimento">
+        <flowNodeRef>ativ-12</flowNodeRef>
+        <flowNodeRef>gw-08</flowNodeRef>
+        <flowNodeRef>ativ-12b</flowNodeRef>
+        <flowNodeRef>ev-05</flowNodeRef>
+        <flowNodeRef>ativ-13</flowNodeRef>
+      </lane>
+
+      <!-- Lane: Financeiro -->
+      <lane id="lane-ator-06" name="Financeiro">
+        <flowNodeRef>ativ-14</flowNodeRef>
+        <flowNodeRef>ev-02</flowNodeRef>
+      </lane>
+
+    </laneSet>
+
+    <!-- ═══════════════════════════════════════════
+         EVENTOS
+    ═══════════════════════════════════════════ -->
+    <startEvent id="ev-01" name="Necessidade de aquisição identificada"/>
+    <endEvent id="ev-02" name="Pagamento efetuado"/>
+    <endEvent id="ev-03" name="Plano B acionado"/>
+    <endEvent id="ev-04" name="RC devolvida"/>
+    <!-- NOVO ach-03 -->
+    <endEvent id="ev-05" name="Não-conformidade registrada"/>
+    <!-- NOVO ach-02: escalação quando limite de ciclos de cotação é atingido -->
+    <endEvent id="ev-07" name="Cotação escalada para aprovação excepcional"/>
+
+    <!-- ═══════════════════════════════════════════
+         ATIVIDADES — mantidas do AS-IS
+    ═══════════════════════════════════════════ -->
+    <userTask id="ativ-01" name="Emitir Requisição de Compra"/>
+    <userTask id="ativ-02" name="Analisar Requisição de Compra"/>
+    <userTask id="ativ-03" name="Selecionar fornecedores"/>
+    <userTask id="ativ-04" name="Solicitar cotações aos fornecedores"/>
+    <userTask id="ativ-05" name="Analisar orçamentos recebidos"/>
+
+    <!-- NOVO ach-06 -->
+    <userTask id="ativ-05b" name="Registrar mapa comparativo"/>
+
+    <userTask id="ativ-06" name="Negociar condições com fornecedor"/>
+    <userTask id="ativ-07" name="Emitir Pedido de Compra"/>
+    <userTask id="ativ-08" name="Aprovar Pedido de Compra"/>
+    <userTask id="ativ-09" name="Enviar Pedido de Compra ao fornecedor"/>
+    <userTask id="ativ-10" name="Confirmar recebimento do pedido"/>
+    <!-- ALTERADO ach-04 -->
+    <serviceTask id="ativ-11" name="Monitorar entrega via ERP"/>
+    <userTask id="ativ-12" name="Conferir mercadoria e nota fiscal"/>
+    <!-- NOVO ach-03 -->
+    <userTask id="ativ-12b" name="Registrar não-conformidade"/>
+    <!-- ALTERADO ach-08 -->
+    <serviceTask id="ativ-13" name="Lançar nota fiscal no sistema"/>
+    <userTask id="ativ-14" name="Efetuar pagamento"/>
+
+    <!-- ═══════════════════════════════════════════
+         GATEWAYS — mantidos do AS-IS + novos
+    ═══════════════════════════════════════════ -->
+    <exclusiveGateway id="gw-01" name="RC está clara e correta?"/>
+    <exclusiveGateway id="gw-02" name="Fornecedor ativo na carteira?"/>
+    <exclusiveGateway id="gw-03" name="Mínimo de 3 orçamentos recebidos?"/>
+    <!-- NOVO ach-02 -->
+    <exclusiveGateway id="gw-03b" name="Limite de 2 ciclos atingido?"/>
+    <exclusiveGateway id="gw-04" name="Orçamento atende condições da empresa?"/>
+    <exclusiveGateway id="gw-05" name="Exige aprovação por gestor?"/>
+    <exclusiveGateway id="gw-06" name="Fornecedor confirmou recebimento?"/>
+    <exclusiveGateway id="gw-07" name="Fornecedor entrega na data combinada?"/>
+    <!-- NOVO ach-05 -->
+    <exclusiveGateway id="gw-07b" name="Condição de pagamento válida?"/>
+    <!-- NOVO ach-03 -->
+    <exclusiveGateway id="gw-08" name="Mercadoria conforme o PC?"/>
+
+    <!-- ═══════════════════════════════════════════
+         SEQUENCE FLOWS
+    ═══════════════════════════════════════════ -->
+
+    <!-- Início -->
+    <sequenceFlow id="sf-ev01-ativ01" sourceRef="ev-01" targetRef="ativ-01"/>
+    <sequenceFlow id="sf-ativ01-gw01" sourceRef="ativ-01" targetRef="gw-01"/>
+
+    <!-- gw-01: RC válida? -->
+    <sequenceFlow id="sf-gw01-ativ02" sourceRef="gw-01" targetRef="ativ-02">
+      <conditionExpression>Sim — RC clara e com especificações corretas</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw01-ev04" sourceRef="gw-01" targetRef="ev-04">
+      <conditionExpression>Não — RC devolvida ao solicitante para correção</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="sf-ativ02-ativ03" sourceRef="ativ-02" targetRef="ativ-03"/>
+    <sequenceFlow id="sf-ativ03-gw02" sourceRef="ativ-03" targetRef="gw-02"/>
+
+    <!-- gw-02: Fornecedor ativo? -->
+    <sequenceFlow id="sf-gw02-ativ04-sim" sourceRef="gw-02" targetRef="ativ-04">
+      <conditionExpression>Sim — utilizar histórico e solicitar cotação</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw02-ativ04-nao" sourceRef="gw-02" targetRef="ativ-04">
+      <conditionExpression>Não — desenvolver novo fornecedor e solicitar cotação</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="sf-ativ04-gw03" sourceRef="ativ-04" targetRef="gw-03"/>
+
+    <!-- gw-03: Mínimo 3 cotações? -->
+    <sequenceFlow id="sf-gw03-ativ05" sourceRef="gw-03" targetRef="ativ-05">
+      <conditionExpression>Sim — mínimo de 3 orçamentos recebidos</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw03-gw03b" sourceRef="gw-03" targetRef="gw-03b">
+      <conditionExpression>Não — verificar limite de tentativas antes de novo ciclo</conditionExpression>
+    </sequenceFlow>
+
+    <!-- NOVO gw-03b: limite de iterações (ach-02) -->
+    <sequenceFlow id="sf-gw03b-ativ04" sourceRef="gw-03b" targetRef="ativ-04">
+      <conditionExpression>Não — limite não atingido, buscar fornecedor adicional</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw03b-ev07" sourceRef="gw-03b" targetRef="ev-07">
+      <conditionExpression>Sim — máximo de 2 ciclos atingido sem mínimo de cotações: escalar para aprovação de cotação única</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Análise e mapa comparativo (ach-06) -->
+    <sequenceFlow id="sf-ativ05-ativ05b" sourceRef="ativ-05" targetRef="ativ-05b"/>
+    <sequenceFlow id="sf-ativ05b-gw04" sourceRef="ativ-05b" targetRef="gw-04"/>
+
+    <!-- gw-04: Orçamento aprovado? -->
+    <sequenceFlow id="sf-gw04-ativ07" sourceRef="gw-04" targetRef="ativ-07">
+      <conditionExpression>Sim — orçamento atende condições: preço, tributos e prazo de pagamento</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw04-ativ06" sourceRef="gw-04" targetRef="ativ-06">
+      <conditionExpression>Não — negociar condições com o fornecedor</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-ativ06-ativ07" sourceRef="ativ-06" targetRef="ativ-07"/>
+
+    <!-- NOVO gw-07b: validação rn-02 (ach-05) -->
+    <sequenceFlow id="sf-ativ07-gw07b" sourceRef="ativ-07" targetRef="gw-07b"/>
+    <sequenceFlow id="sf-gw07b-gw05" sourceRef="gw-07b" targetRef="gw-05">
+      <conditionExpression>Sim — condição de pagamento válida conforme rn-02</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw07b-ativ06" sourceRef="gw-07b" targetRef="ativ-06">
+      <conditionExpression>Não — retornar para negociação: condição de pagamento abaixo do prazo de venda</conditionExpression>
+    </sequenceFlow>
+
+    <!-- gw-05: Exige aprovação? -->
+    <sequenceFlow id="sf-gw05-ativ08" sourceRef="gw-05" targetRef="ativ-08">
+      <conditionExpression>Sim — encaminhar para aprovação do gestor</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw05-ativ09" sourceRef="gw-05" targetRef="ativ-09">
+      <conditionExpression>Não — enviar diretamente ao fornecedor</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-ativ08-ativ09" sourceRef="ativ-08" targetRef="ativ-09"/>
+
+    <sequenceFlow id="sf-ativ09-ativ10" sourceRef="ativ-09" targetRef="ativ-10"/>
+
+    <!-- gw-06: Fornecedor confirmou recebimento do PC? -->
+    <sequenceFlow id="sf-ativ10-gw06" sourceRef="ativ-10" targetRef="gw-06"/>
+    <sequenceFlow id="sf-gw06-ativ11" sourceRef="gw-06" targetRef="ativ-11">
+      <conditionExpression>Sim — PC confirmado, iniciar monitoramento automático</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw06-ativ10" sourceRef="gw-06" targetRef="ativ-10">
+      <conditionExpression>Não — contatar fornecedor por telefone para confirmar recebimento</conditionExpression>
+    </sequenceFlow>
+
+    <!-- ativ-11 agora é serviceTask (ach-04) -->
+    <sequenceFlow id="sf-ativ11-gw07" sourceRef="ativ-11" targetRef="gw-07"/>
+
+    <!-- gw-07: Entrega no prazo? -->
+    <sequenceFlow id="sf-gw07-ativ12" sourceRef="gw-07" targetRef="ativ-12">
+      <conditionExpression>Sim — mercadoria entregue na data combinada</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw07-ev03" sourceRef="gw-07" targetRef="ev-03">
+      <conditionExpression>Não — acionar plano B: fornecedor alternativo</conditionExpression>
+    </sequenceFlow>
+
+    <!-- NOVO gw-08: conformidade no recebimento (ach-03) -->
+    <sequenceFlow id="sf-ativ12-gw08" sourceRef="ativ-12" targetRef="gw-08"/>
+    <sequenceFlow id="sf-gw08-ativ13" sourceRef="gw-08" targetRef="ativ-13">
+      <conditionExpression>Sim — mercadoria e NF conformes com o PC</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw08-ativ12b" sourceRef="gw-08" targetRef="ativ-12b">
+      <conditionExpression>Não — registrar não-conformidade e iniciar devolução</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-ativ12b-ev05" sourceRef="ativ-12b" targetRef="ev-05"/>
+
+    <!-- Lançamento NF (serviceTask com SLA D+1, ach-08) e pagamento -->
+    <sequenceFlow id="sf-ativ13-ativ14" sourceRef="ativ-13" targetRef="ativ-14"/>
+    <sequenceFlow id="sf-ativ14-ev02" sourceRef="ativ-14" targetRef="ev-02"/>
+
+  </process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="proc_tobe">
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>

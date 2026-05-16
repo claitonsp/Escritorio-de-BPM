@@ -1,0 +1,58 @@
+{
+  "processo": "Processo de Compras — Aquisição de Materiais e Serviços",
+  "atores": [
+    { "id": "ator-01", "nome": "Solicitante", "tipo": "interno" },
+    { "id": "ator-02", "nome": "Comprador (Departamento de Compras)", "tipo": "interno" },
+    { "id": "ator-03", "nome": "Fornecedor", "tipo": "externo" },
+    { "id": "ator-04", "nome": "Almoxarifado / Recebimento", "tipo": "interno" },
+    { "id": "ator-05", "nome": "Gestor Aprovador", "tipo": "interno" },
+    { "id": "ator-06", "nome": "Financeiro", "tipo": "interno" }
+  ],
+  "atividades": [
+    { "id": "ativ-01", "descricao": "Emitir Requisição de Compra (RC) com descrição do material, quantidade e data de necessidade", "ator_responsavel": "ator-01", "sistema": "sis-01" },
+    { "id": "ativ-02", "descricao": "Analisar a Requisição de Compra: verificar especificações, clareza e adequação do material solicitado", "ator_responsavel": "ator-02", "sistema": null },
+    { "id": "ativ-03", "descricao": "Identificar e selecionar fornecedores aptos para o material (carteira ativa ou novos)", "ator_responsavel": "ator-02", "sistema": null },
+    { "id": "ativ-04", "descricao": "Solicitar cotações / orçamentos a no mínimo 3 fornecedores", "ator_responsavel": "ator-02", "sistema": null },
+    { "id": "ativ-05", "descricao": "Analisar orçamentos recebidos: verificar preço unitário, total, tributos, regime tributário, condição de pagamento e prazo de entrega", "ator_responsavel": "ator-02", "sistema": null },
+    { "id": "ativ-06", "descricao": "Negociar condições com o fornecedor selecionado (preço, prazo de entrega, condição de pagamento)", "ator_responsavel": "ator-02", "sistema": null },
+    { "id": "ativ-07", "descricao": "Emitir Pedido de Compra (PC) com descrição, quantidade, valor unitário, impostos, condição de pagamento e data de entrega", "ator_responsavel": "ator-02", "sistema": "sis-01" },
+    { "id": "ativ-08", "descricao": "Aprovar o Pedido de Compra (alinhamento com orçamento anual e controle de gastos mensais)", "ator_responsavel": "ator-05", "sistema": null },
+    { "id": "ativ-09", "descricao": "Enviar o Pedido de Compra formal ao fornecedor (via e-mail ou sistema)", "ator_responsavel": "ator-02", "sistema": "sis-01" },
+    { "id": "ativ-10", "descricao": "Confirmar recebimento do Pedido de Compra pelo fornecedor", "ator_responsavel": "ator-02", "sistema": null },
+    { "id": "ativ-11", "descricao": "Realizar follow-up de entrega: acompanhar pedidos conforme datas de entrega (mínimo 1 semana antes)", "ator_responsavel": "ator-02", "sistema": null },
+    { "id": "ativ-12", "descricao": "Receber mercadoria e conferir nota fiscal conforme o Pedido de Compra", "ator_responsavel": "ator-04", "sistema": null },
+    { "id": "ativ-13", "descricao": "Lançar nota fiscal no sistema para pagamento", "ator_responsavel": "ator-04", "sistema": "sis-01" },
+    { "id": "ativ-14", "descricao": "Efetuar pagamento ao fornecedor", "ator_responsavel": "ator-06", "sistema": null }
+  ],
+  "eventos": [
+    { "id": "ev-01", "tipo": "start", "descricao": "Identificação da necessidade de aquisição de material ou serviço" },
+    { "id": "ev-02", "tipo": "end", "descricao": "Nota fiscal lançada no sistema e pagamento efetuado pelo Financeiro — encerramento da compra" }
+  ],
+  "gateways": [
+    { "id": "gw-01", "tipo": "exclusive", "descricao": "Requisição de Compra está clara e com especificações corretas?", "condicoes": ["Sim → prosseguir para identificação de fornecedores", "Não → solicitar alteração/esclarecimento ao solicitante"] },
+    { "id": "gw-02", "tipo": "exclusive", "descricao": "Fornecedor já está ativo na carteira de fornecedores?", "condicoes": ["Sim → utilizar histórico e solicitar cotação", "Não → desenvolver novo fornecedor"] },
+    { "id": "gw-03", "tipo": "exclusive", "descricao": "Mínimo de 3 orçamentos recebidos?", "condicoes": ["Sim → prosseguir para análise", "Não → buscar fornecedor adicional até atingir mínimo de 3"] },
+    { "id": "gw-04", "tipo": "exclusive", "descricao": "Orçamento atende condições da empresa (preço, tributos, prazo de pagamento)?", "condicoes": ["Sim → selecionar fornecedor e emitir Pedido de Compra", "Não → negociar condições"] },
+    { "id": "gw-05", "tipo": "exclusive", "descricao": "Empresa exige aprovação do Pedido de Compra por gestor?", "condicoes": ["Sim → encaminhar para aprovação", "Não → enviar diretamente ao fornecedor"] },
+    { "id": "gw-06", "tipo": "exclusive", "descricao": "Fornecedor confirmou recebimento do Pedido de Compra?", "condicoes": ["Sim → iniciar follow-up", "Não → contatar fornecedor por telefone para confirmar"] },
+    { "id": "gw-07", "tipo": "exclusive", "descricao": "Fornecedor consegue entregar na data combinada?", "condicoes": ["Sim → aguardar entrega", "Não → acionar plano B (fornecedor alternativo)"] }
+  ],
+  "sistemas": [
+    { "id": "sis-01", "nome": "ERP / Sistema de Gestão (IRP)", "tipo": "ERP" }
+  ],
+  "regras_de_negocio": [
+    { "id": "rn-01", "descricao": "O departamento de compras exige no mínimo 3 orçamentos por compra para ter parâmetro de preço de mercado", "atividade_relacionada": "ativ-04" },
+    { "id": "rn-02", "descricao": "A condição de pagamento negociada com o fornecedor deve ser superior ao prazo de venda da empresa (ex: se a empresa vende a 30 dias, deve comprar com prazo maior que 30 dias) para garantir fluxo financeiro saudável", "atividade_relacionada": "ativ-06" },
+    { "id": "rn-03", "descricao": "O Pedido de Compra deve ser a cópia exata do orçamento negociado (descrição, quantidade, valor unitário, impostos, condição de pagamento e data de entrega)", "atividade_relacionada": "ativ-07" },
+    { "id": "rn-04", "descricao": "O follow-up de entrega deve ser realizado no mínimo 1 semana antes da data de entrega prevista, ou conforme criticidade do produto", "atividade_relacionada": "ativ-11" },
+    { "id": "rn-05", "descricao": "O trabalho do departamento de compras encerra somente após recebimento da mercadoria, da nota fiscal e lançamento no sistema para pagamento", "atividade_relacionada": "ativ-13" },
+    { "id": "rn-06", "descricao": "A requisição de compra deve ter clareza total sobre especificações do material antes de iniciar a cotação", "atividade_relacionada": "ativ-02" }
+  ],
+  "observacoes": [
+    "O sistema ERP/IRP é mencionado para emissão de requisições e pedidos de compra, mas o nome do sistema não é especificado.",
+    "A aprovação do Pedido de Compra por gestor é opcional — algumas empresas adotam, outras não.",
+    "O processo descreve compras de materiais/matéria-prima; pode haver variações para serviços.",
+    "Não há menção a processo de devolução, divergências na nota fiscal ou reclamações de qualidade.",
+    "O vídeo menciona contato com áreas como RH, Logística, Engenharia e Produção como clientes internos, mas essas interações não são detalhadas no fluxo."
+  ]
+}

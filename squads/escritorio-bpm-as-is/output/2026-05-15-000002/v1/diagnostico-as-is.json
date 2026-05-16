@@ -1,0 +1,130 @@
+{
+  "processo": "Processo de Compras — Aquisição de Materiais e Serviços",
+  "resumo_executivo": "O processo de compras apresenta estrutura funcional básica com rastreabilidade de documentos parcialmente estabelecida via Pedido de Compra e Requisição de Compra. Os principais riscos identificados são a ausência de critérios objetivos de avaliação de fornecedores na concorrência (lacuna da própria transcrição), a dependência excessiva de controles manuais em atividades que poderiam ser automatizadas (ativ-09, ativ-10, ativ-11), e a inexistência de tratamento formal para não-conformidades no recebimento de mercadorias (ativ-12). O loop de cotação (gw-03) não tem limite máximo de iterações definido, configurando risco de ciclo indefinido. A regra rn-02 (condição de pagamento superior ao prazo de venda) é uma boa prática de fluxo financeiro, mas não há mecanismo de controle explícito que garanta sua aplicação sistemática.",
+  "metricas_estruturais": {
+    "total_atividades": 14,
+    "atividades_manuais": 13,
+    "atividades_automaticas": 1,
+    "total_handoffs": 7,
+    "total_gateways": 7,
+    "caminhos_indefinidos": 0,
+    "atores_internos": 5,
+    "atores_externos": 1
+  },
+  "achados": [
+    {
+      "id": "ach-01",
+      "framework": "Lean",
+      "categoria": "desperdicio_espera",
+      "descricao": "A atividade ativ-10 (confirmar recebimento do PC pelo fornecedor) é uma espera passiva: o comprador aguarda resposta do fornecedor e só age se não houver retorno. Esse padrão gera fila de trabalho não visível e atraso não mensurável entre o envio (ativ-09) e o início do follow-up (ativ-11).",
+      "elementos_relacionados": ["ativ-09", "ativ-10", "ativ-11", "gw-06"],
+      "impacto_potencial": "Pedidos de compra não confirmados podem resultar em mercadorias não entregues sem alerta até o vencimento do follow-up, causando ruptura de estoque.",
+      "prioridade": "alta",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "Padrão explicitamente descrito na transcrição: 'o e-mail pode ir para o spam... essa mercadoria nunca vai chegar'.",
+      "recomendacao": "No TO-BE, implementar confirmação automática via sistema (ACK eletrônico) ou SLA máximo de 24h para confirmação, com alerta automático ao comprador."
+    },
+    {
+      "id": "ach-02",
+      "framework": "CBOK",
+      "categoria": "lacuna_especificacao",
+      "descricao": "O loop em gw-03 ('Mínimo de 3 orçamentos recebidos?') não possui limite máximo de iterações nem condição de saída alternativa. Se um produto for muito específico e não houver 3 fornecedores disponíveis, o processo entra em ciclo indefinido.",
+      "elementos_relacionados": ["gw-03", "ativ-04", "rn-01"],
+      "impacto_potencial": "Bloqueio operacional para compras de itens especializados ou em situações de escassez de mercado, sem previsão de exceção formal.",
+      "prioridade": "alta",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "A regra rn-01 exige mínimo de 3 cotações mas não prevê exceção. A transcrição cita 'busca um quarto fornecedor' apenas como sugestão, sem formalização.",
+      "recomendacao": "No TO-BE, adicionar gateway após N tentativas (ex: 2 ciclos) com caminho de exceção 'Aprovação de cotação única por gestor' para casos justificados."
+    },
+    {
+      "id": "ach-03",
+      "framework": "ISO9001",
+      "categoria": "nao_conformidade",
+      "descricao": "A atividade ativ-12 (receber mercadoria e conferir NF conforme PC) não possui caminho de exceção para divergências: quantidade errada, produto diferente, NF com erro ou mercadoria avariada. O processo encaminha diretamente para ativ-13 (lançar NF) sem gateway de conformidade.",
+      "elementos_relacionados": ["ativ-12", "ativ-13", "ev-02"],
+      "impacto_potencial": "Não-conformidades no recebimento podem ser registradas no sistema como conformes, gerando pagamento indevido e falha de rastreabilidade de qualidade.",
+      "prioridade": "alta",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "A ausência do gateway de conformidade é estrutural e diretamente observável no JSON — nenhuma atividade ou gateway cobre divergências no recebimento.",
+      "recomendacao": "No TO-BE, inserir gateway após ativ-12: 'Mercadoria/NF conforme o PC?' com caminho 'Não' para devolução/acionamento do fornecedor antes do lançamento no sistema."
+    },
+    {
+      "id": "ach-04",
+      "framework": "Lean",
+      "categoria": "desperdicio_movimento",
+      "descricao": "A atividade ativ-11 (follow-up de entrega) é inteiramente manual e repetitiva: o comprador acompanha datas, identifica atrasos e contata fornecedores manualmente. Trata-se de tarefa de monitoramento que pode ser automatizada por alertas baseados em datas do PC.",
+      "elementos_relacionados": ["ativ-11", "gw-07", "sis-01"],
+      "impacto_potencial": "Consumo de tempo do comprador em tarefa de baixo valor cognitivo, com risco de esquecimento ou inconsistência no acompanhamento de múltiplos pedidos simultâneos.",
+      "prioridade": "media",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "Transcrição descreve explicitamente o follow-up como processo manual e semanal: 'acompanhar pedidos conforme as datas de entrega'.",
+      "recomendacao": "No TO-BE, configurar alertas automáticos no ERP/sis-01 baseados na data de entrega do PC, disparando notificação ao comprador 7 dias antes (conforme rn-04)."
+    },
+    {
+      "id": "ach-05",
+      "framework": "CBOK",
+      "categoria": "controle",
+      "descricao": "A regra rn-02 (condição de pagamento do fornecedor deve superar o prazo de venda da empresa) é uma regra de negócio crítica para saúde do fluxo de caixa, mas não há controle explícito no processo que impeça a emissão do PC (ativ-07) com condição de pagamento fora desse critério.",
+      "elementos_relacionados": ["ativ-06", "ativ-07", "rn-02", "gw-04"],
+      "impacto_potencial": "Compras realizadas com prazo de pagamento inferior ao prazo de venda comprometem o capital de giro da empresa de forma sistemática e invisível.",
+      "prioridade": "alta",
+      "confiabilidade": "media",
+      "justificativa_confiabilidade": "A regra está documentada no JSON (rn-02), mas a transcrição não confirma se existe validação sistêmica ou apenas orientação comportamental.",
+      "recomendacao": "No TO-BE, implementar validação automática no ERP (sis-01) que bloqueie emissão do PC quando condição de pagamento for inferior ao prazo de venda cadastrado."
+    },
+    {
+      "id": "ach-06",
+      "framework": "ISO9001",
+      "categoria": "rastreabilidade",
+      "descricao": "A análise de orçamentos (ativ-05) não prevê registro formal do critério de seleção do fornecedor vencedor. A decisão de negociação em ativ-06 é tomada com base em julgamento do comprador sem evidência documentada de comparação.",
+      "elementos_relacionados": ["ativ-05", "ativ-06", "gw-04"],
+      "impacto_potencial": "Ausência de rastreabilidade da decisão de compra dificulta auditorias internas, contestações de fornecedores e análise de desempenho histórico.",
+      "prioridade": "media",
+      "confiabilidade": "media",
+      "justificativa_confiabilidade": "A transcrição menciona análise de orçamentos mas não descreve registro ou mapa comparativo formal. Inferência estrutural razoável.",
+      "recomendacao": "No TO-BE, formalizar quadro comparativo de cotações (mapa de concorrência) como documento obrigatório antes da emissão do PC."
+    },
+    {
+      "id": "ach-07",
+      "framework": "Lean",
+      "categoria": "desperdicio_superprocessamento",
+      "descricao": "O processo possui 7 gateways para 14 atividades (ratio 1:2), sendo gw-05 ('Empresa exige aprovação do PC por gestor?') um gateway cuja condição é estrutural/política e poderia ser eliminada com parametrização fixa no ERP para empresas que já definiram a alçada de aprovação.",
+      "elementos_relacionados": ["gw-05", "ativ-08", "ativ-07", "sis-01"],
+      "impacto_potencial": "Decisão redundante a cada ciclo de compra quando a política de aprovação é fixa, gerando retrabalho decisório desnecessário.",
+      "prioridade": "baixa",
+      "confiabilidade": "media",
+      "justificativa_confiabilidade": "A transcrição indica que 'algumas empresas optam' pela aprovação — é uma variável contextual, não universal.",
+      "recomendacao": "No TO-BE, parametrizar alçadas de aprovação no ERP por valor/categoria de compra, eliminando o gateway manual e substituindo por roteamento automático."
+    },
+    {
+      "id": "ach-08",
+      "framework": "CBOK",
+      "categoria": "handoff",
+      "descricao": "O processo registra 7 handoffs entre atores distintos. O handoff ativ-12→ativ-13 (Almoxarifado lança NF no sistema) seguido de ativ-14 (Financeiro efetua pagamento) é um handoff crítico sem SLA explícito: não há prazo definido entre o lançamento da NF e o pagamento.",
+      "elementos_relacionados": ["ativ-12", "ativ-13", "ativ-14", "ator-04", "ator-06"],
+      "impacto_potencial": "Atraso no lançamento da NF pelo Almoxarifado pode causar pagamentos fora do prazo ao fornecedor, gerando multas ou deterioração do relacionamento comercial.",
+      "prioridade": "media",
+      "confiabilidade": "media",
+      "justificativa_confiabilidade": "O handoff é estruturalmente identificado no JSON, mas não há dado sobre SLAs existentes — requer entrevista de aprofundamento.",
+      "recomendacao": "No TO-BE, definir SLA explícito entre recebimento da mercadoria e lançamento da NF no sistema (ex: D+1), com alerta automático ao Financeiro."
+    },
+    {
+      "id": "ach-09",
+      "framework": "Lean",
+      "categoria": "subutilizacao_talento",
+      "descricao": "A única serviceTask do processo é ativ-13 (lançar NF no sistema). As demais 13 atividades são userTask, incluindo tarefas repetitivas de confirmação (ativ-10), acompanhamento (ativ-11) e envio de documentos (ativ-09) que são candidatas a automação via integração ERP/portal do fornecedor.",
+      "elementos_relacionados": ["ativ-09", "ativ-10", "ativ-11", "sis-01"],
+      "impacto_potencial": "Compradores dedicam tempo a tarefas operacionais de baixo valor em vez de atividades estratégicas como análise de mercado e desenvolvimento de fornecedores.",
+      "prioridade": "media",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "Razão automático/manual de 1:13 é diretamente observável nas métricas estruturais do JSON.",
+      "recomendacao": "No TO-BE, avaliar automação de ativ-09 (envio via integração ERP-fornecedor), ativ-10 (ACK automático) e ativ-11 (alertas programáticos por data de entrega do PC)."
+    }
+  ],
+  "observacoes_metodologicas": [
+    "A análise é baseada em transcrição de vídeo educativo (Camila Evers, YouTube) — não representa um processo real de uma empresa específica. Os achados têm validade estrutural, mas dados quantitativos (tempos de ciclo, volumes, custos) não estão disponíveis e não foram inferidos.",
+    "Nenhum critério objetivo de avaliação de fornecedores na concorrência foi descrito na fonte — lacuna reconhecida nas observações do Elicitador e confirmada na análise do Auditor.",
+    "Para aprofundamento recomenda-se: (1) entrevista com compradores sobre volume médio de PCs/mês e tempo médio de ciclo por etapa; (2) mapeamento das integrações existentes no ERP/sis-01; (3) levantamento de índice de não-conformidades no recebimento (ativ-12); (4) verificação de existência de política formal de alçadas de aprovação.",
+    "O processo mapeado cobre compras de materiais — pode haver variações relevantes para compras de serviços que não foram detalhadas na fonte."
+  ]
+}

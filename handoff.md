@@ -18,252 +18,148 @@ Um **Escritório de Processos agêntico** que automatiza consultoria BPM ponta a
 
 Pipeline de quatro agentes especializados:
 
-1. **Elicitação (BABOK)**: extrai entidades de uma transcrição de entrevista, atores, eventos, atividades, regras de negócio e sistemas, em JSON estruturado.
-2. **Modelador AS-IS (BPMN 2.0)**: traduz o JSON em lógica BPMN. O layout visual NÃO é responsabilidade do agente, é delegado a um script Python (bpmn-auto-layout do bpmn.io ou elk.js) para evitar alucinação de coordenadas.
-3. **Auditor (CBOK + Lean Six Sigma + ISO 9001)**: confronta o AS-IS com frameworks de mercado, gera backlog priorizado de melhorias com flag de confiabilidade (já que dados quantitativos de uma entrevista são limitados).
-4. **TO-BE (Desenho de Solução)**: reestrutura o fluxo com automação e integração, gera BPMN final mais documento de justificativa técnica.
+1. **Elicitador (BABOK)**: extrai entidades de uma transcrição, gerando JSON com `nome_bpmn` (curto, para o diagrama) e `descricao` (completo, para contexto). Produz `elicitacao.json`.
+2. **Modelador AS-IS (BPMN 2.0)**: traduz o JSON em XML BPMN estruturado com lanes, gateways e sequenceFlows. Produz `processo-as-is.bpmn`.
+3. **Auditor (CBOK + Lean Six Sigma + ISO 9001)**: confronta o AS-IS com frameworks de mercado, gera backlog priorizado de melhorias. Produz `diagnostico-as-is.json`.
+4. **TO-BE (Designer de Solução)**: aplica as recomendações do Auditor, gera BPMN futuro. Produz `processo-tobe.bpmn`.
 
-## Stack escolhida
+Layout visual gerado por `bpmn-layout.js` (script Node.js local, sem dependências) após cada agente BPMN. Visualização validada no bpmn.io.
 
-- **Framework**: opensquad, file-based, repositório github.com/renatoasse/opensquad
+## Stack
+
+- **Framework**: opensquad (file-based, pipeline serial inline)
 - **IDE host**: Antigravity
 - **Cérebro**: Claude (essa sessão)
 - **Construtor**: Gemini (sessão separada no Antigravity)
 - **Pasta do projeto**: `C:\Users\Claiton\Documents\Escritorio-de-BPM`
-- **Node**: v24.13.1 (confirmado, acima do mínimo v20)
-- **Git**: instalado, branch main, commit inicial feito
+- **Repositório**: GitHub (branch main, push requer PAT do usuário)
+- **Node**: v24.13.1
 
-## Decisão metodológica vigente
+## Estado atual do projeto (2026-05-16)
 
-Recusamos montar WBS detalhado agora. Motivo: três incertezas simultâneas (produto, técnica, plataforma) tornam qualquer plano detalhado prematuro.
+### Run concluída: `output/2026-05-15-000002/v1/`
 
-Adotamos abordagem híbrida: **Spike-Driven Discovery (XP)** seguida de **Walking Skeleton (Cockburn)**, e só depois consolidação em WBS. Três spikes em timebox de um dia útil cada, na ordem: plataforma, geração BPMN, ingestão de entrevista.
-
-## Estado atual do projeto (2026-05-14)
-
-**Spike 3 concluído.** Arquivos em `squads/spike-elicitacao/`. Output em `squads/spike-elicitacao/output/2026-05-14-151200/v1/`.
-
-### O que aprendemos no Spike 3: Ingestão de Entrevista
-
-**Pergunta 1: O agente consegue identificar atores, eventos, atividades, regras de negócio e sistemas a partir de uma transcrição não estruturada?**
-Sim. O agente Elicitador identificou corretamente 7 atores humanos/organizacionais, 15 atividades, 3 eventos (1 start, 2 end), 4 gateways exclusivos, 2 sistemas e 4 regras de negócio. Nenhuma entidade inventada. Todas rastreáveis à transcrição.
-
-**Pergunta 2: O JSON de saída é compatível com o schema que o agente Modelador espera?**
-Sim. O schema definido no step (`atores`, `atividades`, `eventos`, `gateways`, `sistemas`, `regras_de_negocio`, `observacoes`) é o suficiente para o Modelador gerar sequenceFlows e lanes. O agente necessitou de uma rodada de ajuste (v2) para corrigir: duplicidade estrutural do SAP, end event faltante no caminho de orçamento indisponível, e regra de negócio sobre três cotações.
-
-**Pergunta 3: Qual o nível de ruído tolerável?**
-Não testado neste spike. A transcrição era limpa e estruturada. Ruído real (interrupções, contradições, vocabulário coloquial) será testado em sprint posterior quando houver transcrição de entrevista real.
-
-**Decisão metodológica pendente para o Spike 4:**
-O SAP aparece em dois arrays (`atores` com tipo "sistema" e `sistemas`). O agente Modelador vai precisar de uma convenção explícita: SAP terá lane própria no BPMN ou será apenas atributo de atividade? A recomendação é tratar sistemas automatizados (ativ-09, ativ-14) como service tasks dentro da lane do ator humano que os dispara, sem lane SAP separada. Isso simplifica o layout e é compatível com o padrão BPMN 2.0 para automação.
-
-**Caminho aberto após ativ-13 (resolver divergência):** lacuna da transcrição original, não erro do agente. O entrevistado não especificou o que acontece após resolução de divergência na entrega. Precisa ser levantado em entrevista real.
-
-**Spike 2 concluído.** Arquivos em `squads/spike-bpmn/`. Output em `squads/spike-bpmn/output/2026-05-14-173000/v1/`.
-
-### O que aprendemos no Spike 2: Geração BPMN
-
-**Pergunta 1: LLM gera XML BPMN 2.0 válido em uma única chamada?**
-Sim. O XML gerado foi importado no Bizagi Modeler 4.3 e renderizado no bpmn.io sem erros de parsing na primeira tentativa. Nenhuma correção manual foi necessária na estrutura do XML.
-
-**Pergunta 2: Qual o limite de complexidade?**
-Não atingido neste spike. O processo era simples (1 startEvent, 2 endEvents, 4 tasks, 1 exclusiveGateway, 2 lanes, 7 sequenceFlows). O limite será investigado em spike posterior, quando os agentes reais processarem transcrições de entrevistas.
-
-**Pergunta 3: O bpmn-auto-layout renderiza sem coordenadas manuais?**
-Parcialmente. A biblioteca `bpmn-auto-layout` (npm) gera `BPMNShape` com `dc:Bounds` para nós, mas tem duas limitações confirmadas: não gera `BPMNEdge` para sequenceFlows e não respeita `laneSet` ao calcular posições, colocando elementos de raias distintas na mesma coluna x. O resultado é renderizável mas sem setas e com raias desrespeitadas.
-
-**Decisão metodológica:** aceitar layout parcial para o walking skeleton. Layout de qualidade é refinamento posterior. A Alternativa B (bpmn-js via Node.js) resolve o problema de forma completa mas será endereçada após os quatro agentes estarem funcionando.
-
-**Descoberta adicional sobre o opensquad:**
-O comando `npx opensquad run` não existe na v0.1.15. A CLI do opensquad é exclusivamente para setup (init, update, install, uninstall, skills, agents, runs). Squads rodam através do pipeline runner interno do Claude Code, via slash commands, não via terminal autônomo. O Gemini atuou diretamente como agente executor escrevendo o arquivo em disco.
-
-**Bizagi Modeler 4.3:** importa arquivos `.bpmn` normalmente via botão BPMN na aba Exportar/importar. A limitação reportada anteriormente (só .bpm e .bpmc) não se confirmou na prática.
-
-**Spike 1 concluído.** Commit: "Initial spike: opensquad platform validation".
-
-### O que aprendemos sobre o opensquad
-
-**Estrutura de arquivos de um squad:**
+Pipeline completo executado com transcrição real (Camila Evers, YouTube — Processo de Compras):
 
 ```
-squads/{name}/
-  squad.yaml                        — definição (code, name, icon, agents, pipeline.steps)
-  agents/{id}.agent.md              — frontmatter: name, role, icon + persona em markdown
-  pipeline/steps/{id}.md            — frontmatter: agent, outputFile, execution + prompt com {{input}}
-  pipeline/steps/{id}.md            — checkpoint: frontmatter type: checkpoint, message + instruções
-  state.json                        — estado da run ativa (removido ao concluir)
-  output/{YYYY-MM-DD-HHMMSS}/v1/    — output versionado por timestamp
-  output/{timestamp}/state.json     — cópia permanente do state ao concluir
+✅ Step 01 — Elicitador       → elicitacao.json (14 ativ, 7 gw, 6 atores, 1 ERP)
+✅ Step 02 — Checkpoint       → aprovado
+✅ Step 03 — Modelador        → processo-as-is.bpmn
+✅ bpmn-layout.js             → processo-as-is-layout.bpmn
+✅ Step 04 — Checkpoint BPMN  → aprovado (com correções manuais de nomenclatura)
+✅ Step 05 — Auditor          → diagnostico-as-is.json (9 achados: 4 alta, 3 média, 2 baixa)
+✅ Step 06 — Checkpoint Audit → aprovado
+✅ Step 07 — TO-BE Designer   → processo-tobe.bpmn
+✅ bpmn-layout.js             → processo-tobe-layout.bpmn
+✅ Step 08 — Checkpoint TO-BE → aprovado (com correções manuais de nomenclatura)
 ```
 
-**Ciclo de vida do status no state.json:**
-- Execução normal e pausa no checkpoint: `running` (não muda para "paused")
-- Após aprovação: `completed` + campo `completedAt` adicionado
+### Principais achados do Auditor (run 2026-05-15-000002)
 
-**Estrutura do state.json:**
+- **ach-01** (Lean, Alta): confirmação do PC passiva — risco de pedido nunca chegar ao fornecedor
+- **ach-02** (CBOK, Alta): loop gw-03 sem limite de iterações — risco de ciclo infinito
+- **ach-03** (ISO9001, Alta): ativ-12 sem gateway de conformidade — NF pode ser lançada com mercadoria errada
+- **ach-05** (CBOK, Alta): rn-02 sem controle sistêmico — prazo de pagamento pode violar regra de fluxo de caixa
+- Demais: follow-up manual, rastreabilidade de cotações, SLA handoff Almoxarifado→Financeiro
+
+### Melhorias implementadas no TO-BE
+
+- gw-03b: limite de 2 ciclos de cotação antes de escalar
+- ativ-05b: mapa comparativo de cotações obrigatório
+- gw-07b: validação sistêmica da regra de condição de pagamento (rn-02)
+- gw-08 + ativ-12b: gateway de conformidade no recebimento + devolução formal
+- ativ-11: follow-up convertido para serviceTask (monitoramento automático via ERP)
+- ativ-13: lançamento de NF com SLA D+1
+
+## Arquitetura dos agentes (estado atual dos prompts)
+
+### `01-elicitador.md` — ATUALIZADO nesta sessão
+
+Campo `nome_bpmn` adicionado ao schema de saída para atividades, eventos e gateways. O agente gera o rótulo curto diretamente, seguindo:
+- Atividades: Verbo Infinitivo + Objeto, máx 4 palavras
+- Eventos start: estado que dispara, máx 4 palavras
+- Eventos end: estado resultante, máx 3 palavras
+- Gateways: pergunta com "?", máx 6 palavras
+
+Campo `condicoes` dos gateways agora tem estrutura explícita:
 ```json
-{
-  "squad": "nome-do-squad",
-  "status": "running | completed",
-  "step": { "current": N, "total": N, "label": "id-do-step" },
-  "agents": [{ "id": "", "name": "", "icon": "", "status": "done", "desk": { "col": 1, "row": 1 } }],
-  "handoff": { "from": "agente", "to": "user", "message": "...", "completedAt": "ISO8601" },
-  "startedAt": "ISO8601",
-  "updatedAt": "ISO8601",
-  "completedAt": "ISO8601"
-}
+{ "label": "Sim", "descricao": "...", "destino_tipo": "atividade | evento_fim | loop", "destino_id": "ativ-XX" }
 ```
+`destino_tipo: "loop"` → Modelador gera Sequence Flow de retorno, não End Event.
 
-**Checkpoint:** exibe delimitador `✋ CHECKPOINT` no terminal, pausa aguardando resposta. Resposta `1` aprova, texto descritivo solicita ajuste.
+Regra de ator externo documentada: Fornecedor, cliente, banco = `"externo"` → Pool Black Box.
 
-**Dashboard:** roda em `localhost:5174` via `npx opensquad dashboard`. Detecta squads automaticamente via squad-watcher. Interface Phaser com pixel art.
+### `03-modelador.md` — ATUALIZADO nesta sessão
 
-**Restrição crítica:** o Antigravity não suporta subagentes paralelos. Todo o pipeline BPM deve ser serial e inline.
+Regras adicionadas:
+1. **Externo → Pool Black Box**: `tipo: "externo"` gera `<collaboration>` + `<participant isExecutable="false">` + `<messageFlow>`. Nunca Lane.
+2. **Lane vazia proibida**: só cria lane se tiver `<flowNodeRef>`.
+3. **`name=` usa `nome_bpmn`**: nunca o campo `descricao`.
+4. **Gateway com Sim/Não obrigatório**: todos os `<sequenceFlow>` saindo de gateway têm `name="Sim"` ou `name="Não"`.
+5. **Loop = Sequence Flow de retorno**: `destino_tipo: "loop"` → nunca End Event.
 
-**Consumo de tokens:** não mensurável diretamente no Antigravity. Pendência para observação empírica nos agentes BPM reais.
+### `07-tobe.md` — REESCRITO nesta sessão
 
-## Spike 4 concluído. Arquivos em `squads/spike-modelador/`. Output em `squads/spike-modelador/output/`.
+Era hardcoded para um processo específico antigo. Agora é genérico com as mesmas regras do Modelador (nomenclatura, Black Box, lanes vazias, Sim/Não nos gateways, loops).
 
-### O que aprendemos no Spike 4: Modelador AS-IS
+### `04-checkpoint-bpmn.md` — ATUALIZADO nesta sessão
 
-**Pergunta 1: O agente gera XML BPMN 2.0 válido sem alucinar elementos?**
-Sim. 23 nós (1 startEvent, 4 endEvents, 15 tarefas, 4 gateways) e 24 sequenceFlows gerados sem invenção. Todos rastreáveis ao elicitacao.json.
+Agora tem validação automática obrigatória com 5 `grep` que bloqueiam avanço se:
+- Qualquer `name=` tiver mais de 50 caracteres
+- Qualquer gateway tiver saída sem `name=`
+- Lane contiver "Fornecedor", "cliente" ou "transportadora"
 
-**Pergunta 2: As lanes correspondem corretamente aos atores?**
-Sim. 7 lanes geradas na ordem correta. SAP modelado como serviceTask dentro da lane do ator humano que o dispara (ativ-09 no Gerente, ativ-14 no Almoxarifado), sem lane própria, conforme decisão do Spike 3.
+### `08-checkpoint-tobe.md` — ATUALIZADO nesta sessão
 
-**Pergunta 3: Os gateways e condicionais estão corretos?**
-Sim. 4 exclusiveGateway com conditionExpression em todas as saídas. ev-04 "Divergência resolvida (fluxo indefinido)" gerado conforme instrução.
+Mesma validação automática adaptada para o TO-BE, incluindo verificação se achados de prioridade alta foram implementados.
 
-**Pergunta 4: O XML passa no bpmn.io e no Bizagi?**
-Parcialmente. bpmn.io renderizou corretamente após adição manual de BPMNShape para as 7 lanes. Bizagi não renderizou em nenhuma tentativa (causa não identificada, não bloqueante para o walking skeleton).
+## bpmn-layout.js — estado atual
 
-**Descoberta técnica crítica sobre DI:**
-O agente Modelador não gera DI (BPMNShape/BPMNEdge). O bpmn-auto-layout 1.3.0 gera BPMNShape para nós mas não para lanes. Sem shapes de lane no BPMNPlane, ferramentas não renderizam. A solução atual é adicionar BPMNShape de lanes via script ou manualmente. A solução definitiva (bpmn-js via Node.js gerando DI completo) continua como refinamento posterior.
-
-**Descoberta técnica sobre bpmn-auto-layout 1.3.0:**
-API mudou: `layoutProcess` é função direta exportada, não método de classe. Usar `const { layoutProcess } = require('bpmn-auto-layout')` em vez de `new BpmnAutoLayout()`.
-
-**Observação sobre encoding:**
-Labels com caracteres UTF-8 (ã, ç, é) aparecem corrompidos no SVG exportado pelo bpmn.io. O XML BPMN original está correto. É artefato do export SVG do bpmn.io, não do agente.
-
-## Walking Skeleton AS-IS concluído (2026-05-14)
-
-Squad `escritorio-bpm-as-is` rodou de ponta a ponta. Pipeline: Elicitador → elicitacao.json → Modelador → processo-as-is.bpmn → bpmn-auto-layout → DI Injector → processo-as-is-final.bpmn. Diagrama renderizou no bpmn.io com 7 lanes, 4 gateways, 15 atividades, serviceTasks e ev-04.
-
-**Correção incorporada vs. Spike 4:** gw-01 (Valor da compra) movido para lane do Supervisor, onde a decisão ocorre.
-
-**Limitação identificada: sobreposição de lanes no DI Injector.** O bpmn-auto-layout coloca todos os elementos em coluna única ignorando lanes. Elementos de atores diferentes ficam intercalados no eixo Y. O DI Injector calcula bounds por lane a partir das posições reais, causando sobreposição (lane do Gerente engolindo as demais). Diagrama renderizável mas não entregável a cliente.
-
-**Resolução definitiva:** substituir bpmn-auto-layout + DI Injector por bpmn-js via Node.js, que gera DI completo com lanes sem sobreposição e BPMNEdge (setas). Esta é a Alternativa B definida desde o Spike 2.
-
-**Bizagi:** ainda não renderiza. Aceito como não bloqueante. bpmn.io é a ferramenta de validação padrão.
-
-## Pipeline completo (2026-05-15)
-
-Todos os quatro agentes implementados e validados. Squad `escritorio-bpm-as-is` com 8 steps, pipeline serial.
-
-### Agente 3: Auditor (CBOK + Lean Six Sigma + ISO 9001)
-
-Arquivos: `agents/auditor.agent.md`, `pipeline/steps/05-auditor.md`, `pipeline/steps/06-checkpoint-auditoria.md`.
-
-Output: `output/2026-05-14-000001/v1/diagnostico-as-is.json` com 10 achados estruturados (4 alta prioridade, 4 média, 2 baixa).
-
-**Decisão incorporada durante a auditoria:** gw-01 corrigido no AS-IS. Caminho "Até R$ 5.000" vai direto para ativ-05 sem passar pelo Gerente. Confirmado pelo usuário. elicitacao.json, processo-as-is.bpmn e diagnostico-as-is.json atualizados.
-
-### Agente 4: TO-BE (Designer de Solução)
-
-Arquivos: `agents/tobe.agent.md`, `pipeline/steps/07-tobe.md`, `pipeline/steps/08-checkpoint-tobe.md`.
-
-Output: `output/2026-05-14-000001/v1/processo-tobe.bpmn`, validado no bpmn.io.
-
-**Mudanças do AS-IS para o TO-BE:**
-- ativ-06: userTask convertida para serviceTask (automação SAP, ach-06)
-- ativ-16 (nova): "Registrar comparativo de cotações e selecionar fornecedor" (ISO 9001 cl. 8.4.1, ach-07)
-- gw-05 (novo): "Resolução da divergência" com 3 saídas após ativ-13 (ach-02)
-- ativ-17 (nova): "Devolver mercadoria ao fornecedor" (Almoxarifado)
-- ativ-18 (nova): "Escalar divergência para Diretoria" (Gerente de Compras)
-- ev-05, ev-06 (novos), ev-04 removido
-- Supervisor mantido: segregação de deveres
-
-## Sessão 2026-05-15: bpmn-layout.js e nomenclatura
-
-### O que foi feito
-
-**Problema resolvido: layout de swimlanes.**
-O bpmn-auto-layout posicionava todos os elementos em coluna única (viewBox 110×3853px, sem lanes). Diagnóstico: a biblioteca ignora `laneSet` e `flowNodeRef` ao calcular coordenadas. O pipeline de três scripts (bpmn-auto-layout + di-injector + edge-injector) foi descartado.
-
-**Solução implementada: `bpmn-layout.js`**
-Arquivo em `squads/escritorio-bpm-as-is/scripts/bpmn-layout.js`. Script Node.js sem dependências externas que substitui o pipeline inteiro.
-
-Algoritmo:
-1. Parse do BPMN via regex, sem biblioteca de XML
-2. Extração de lanes, nós (tasks/events/gateways) e sequenceFlows
-3. Detecção de back-edges via DFS (ciclos, ex.: gw-05 → ativ-12)
-4. Ordenação topológica com longest-path (Kahn's algorithm) → coluna de cada elemento
-5. Posicionamento: `x = MARGIN_L + col × COL_W`, `y = MARGIN_T + lane_index × LANE_H`
-6. Geração de BPMNShape (lanes + nós) e BPMNEdge (cotovelo para cross-lane, reta para same-lane, rota abaixo das lanes para back-edges)
-7. Substitui ou injeta a seção `BPMNDiagram` no arquivo de saída
+Arquivo em `squads/escritorio-bpm-as-is/scripts/bpmn-layout.js`. Script Node.js sem dependências.
 
 Uso:
-```
+```bash
 node squads/escritorio-bpm-as-is/scripts/bpmn-layout.js <input.bpmn> <output.bpmn>
 ```
 
-Input: BPMN bruto do agente Modelador (sem DI). Output: BPMN completo com DI pronto para abrir no bpmn.io.
+Algoritmo: regex parse → extração de lanes/nós/flows → Kahn topological sort → longest-path column assignment → BPMNShape + BPMNEdge → injeção no BPMNDiagram.
 
-**Resultado validado:** diagrama (6) renderizou no bpmn.io com 7 lanes horizontais, elementos distribuídos esquerda → direita por fluxo, setas em cotovelo entre lanes. Dimensões: 4110×930px. Legível e entregável.
+Constantes principais: `POOL_LABEL_W=30`, `LANE_LABEL_W=120`, `LANE_H=120`, `COL_W=180`, `ELEM_W=120`, `TASK_H=60`, `EVENT_W=36`, `GW_W=50`.
 
-**Nomenclatura corrigida em `processo-tobe.bpmn`.**
-Regras aplicadas: atividades com Verbo Infinitivo + Objeto; eventos com Substantivo + Particípio; gateways como pergunta com `?`; rótulos de saída como resposta direta.
+Limitação conhecida: back-edges (loops) são roteados abaixo das lanes (y=960), criando linhas longas. Não bloqueante para uso atual.
 
-Mudanças principais:
-- gw-01: "Valor da compra" → "Valor acima de R$ 5.000?"
-- gw-02: "Disponibilidade de orçamento" → "Orçamento disponível?"
-- gw-03: "Fornecedor cadastrado" → "Fornecedor cadastrado?"
-- gw-04: "Conferência da nota fiscal" → "NF confere com pedido?"
-- gw-05: "Resolução da divergência" → "Como resolver a divergência?"
-- ativ-05: "Pedir três cotações..." → "Solicitar cotações aos fornecedores"
-- ativ-06: removido "automaticamente" → "Validar cadastro do fornecedor"
-- ativ-09: "Enviar notificação automática ao fornecedor" → "Notificar fornecedor"
-- ativ-14: removido "automaticamente" → "Gerar documento de pagamento"
-- ativ-16: "Registrar comparativo... e selecionar fornecedor" → "Selecionar fornecedor"
-- ev-03: removido parêntese → "Requisição devolvida"
-- ev-05: "Mercadoria devolvida ao fornecedor" → "Mercadoria devolvida"
-- ev-06: "Caso escalado para Diretoria" → "Divergência escalada"
+## Problema em aberto: Fornecedor como Pool Black Box
 
-**Decisão metodológica confirmada:**
-gw-01 "Valor acima de R$ 5.000?": caminho "Até R$ 5.000" vai direto para ativ-05, bypassing verificação de orçamento. Correto e já confirmado na sessão anterior. Não alterar.
+As regras foram escritas nos prompts (01-elicitador, 03-modelador, 07-tobe) mas **ainda não foram testadas em uma run completa**. A run 2026-05-15-000002 foi gerada com as regras antigas — o Fornecedor ainda apareceu como Lane vazia.
 
-### Próxima ação: regenerar layout e verificar labels
+A próxima run irá validar se os agentes seguem as regras automaticamente. Se não seguirem, a estratégia é reforçar os greps do checkpoint para bloquear e forçar correção antes de avançar.
 
-**Pendência:** `processo-tobe.bpmn` tem os nomes corrigidos, mas `processo-tobe-layout.bpmn` ainda tem os nomes antigos (gerado antes da correção). Precisa re-executar o bpmn-layout.js para que os labels dentro dos retângulos reflitam a nomenclatura atualizada.
+## Problema em aberto: erros BPMN 2.0 estruturais (identificados por análise comparativa)
 
-Comando para o Gemini:
-```
-node squads/escritorio-bpm-as-is/scripts/bpmn-layout.js squads/escritorio-bpm-as-is/output/2026-05-14-000001/v1/processo-tobe.bpmn squads/escritorio-bpm-as-is/output/2026-05-14-000001/v1/processo-tobe-layout.bpmn
-```
+Análise comparando o diagrama gerado com referência de mercado identificou:
+1. Externo como Lane (resolvido nos prompts, não testado ainda)
+2. Gateway sem rótulos Sim/Não nas saídas (resolvido nos prompts)
+3. Loops terminando em End Event ao invés de retornar (resolvido nos prompts)
+4. Message Flows ausentes para interações com externos (regra adicionada ao Modelador)
+5. Checkpoints agora têm greps automáticos para detectar esses problemas antes de avançar
 
-Após executar, abrir `processo-tobe-layout.bpmn` no bpmn.io e confirmar:
-1. Labels dos gateways mostram pergunta com `?`
-2. Labels das atividades seguem Verbo + Objeto, sem advérbios
-3. Labels dos eventos finais são concisos
-4. Nenhum texto transborda o retângulo (se transbordar, ajustar `ELEM_W` ou `TASK_H` no bpmn-layout.js)
+## Próxima ação recomendada
 
-**Refinamento posterior (não bloqueante):** aplicar as mesmas correções de nomenclatura ao `processo-as-is.bpmn` para manter consistência entre AS-IS e TO-BE.
+**Testar o pipeline completo com uma nova transcrição** para validar todas as mudanças desta sessão:
+1. Elicitador gera `nome_bpmn` e `condicoes` estruturadas
+2. Modelador produz Fornecedor como Pool Black Box (não Lane)
+3. Gateways têm Sim/Não nos fluxos de saída
+4. Checkpoints detectam e bloqueiam erros automaticamente sem intervenção manual
+
+Input sugerido: qualquer transcrição nova em `squads/escritorio-bpm-as-is/input/`.
 
 ## Regras de estilo invioláveis
 
 - **Sem traços longos (em-dash, U+2014)**. Usar vírgulas ou reformular a frase.
-- **Conteúdo grounded em experiência documentada**. NUNCA inventar métricas, projetos fictícios ou dados de clientes. Quando incerto, perguntar.
+- **Conteúdo grounded em experiência documentada**. NUNCA inventar métricas, projetos fictícios ou dados de clientes.
 - **Português brasileiro** como padrão.
 - **Tom direto e crítico**, com autoridade quando apropriado (ABPMP, OMG, BPM CBOK v4.0, BABOK v3).
-- **Estrutura discursiva preferida**: nomeação técnica, ancoragem em autoridade, descida ao concreto, construção em camadas, posição autoral.
-- Evitar formatação excessiva (bullets, headers, negritos em cascata). Prosa quando der.
-
-## Conselho consultor externo
-
-Se uma decisão metodológica complexa surgir e você precisar de segunda opinião, o usuário pode retornar à conversa original no Claude.ai (web). Toda a história do projeto está preservada lá via sistema de memória. Funciona como conselho consultor externo a este projeto.
+- Evitar formatação excessiva. Prosa quando der.
 
 ## Confirmação esperada antes de qualquer ação
 

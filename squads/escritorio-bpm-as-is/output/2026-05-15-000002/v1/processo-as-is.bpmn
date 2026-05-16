@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://escritorio-bpm/as-is"
+             id="definitions_as_is">
+
+  <process id="proc_as_is" name="Processo de Compras — Aquisição de Materiais e Serviços" isExecutable="false">
+    <laneSet id="ls_01">
+      <lane id="lane-ator-01" name="Solicitante">
+        <flowNodeRef>ev-01</flowNodeRef>
+        <flowNodeRef>ativ-01</flowNodeRef>
+        <flowNodeRef>ev-04</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-02" name="Comprador (Departamento de Compras)">
+        <flowNodeRef>gw-01</flowNodeRef>
+        <flowNodeRef>ativ-02</flowNodeRef>
+        <flowNodeRef>ativ-03</flowNodeRef>
+        <flowNodeRef>ativ-04</flowNodeRef>
+        <flowNodeRef>gw-02</flowNodeRef>
+        <flowNodeRef>gw-03</flowNodeRef>
+        <flowNodeRef>ativ-05</flowNodeRef>
+        <flowNodeRef>ativ-06</flowNodeRef>
+        <flowNodeRef>gw-04</flowNodeRef>
+        <flowNodeRef>ativ-07</flowNodeRef>
+        <flowNodeRef>gw-05</flowNodeRef>
+        <flowNodeRef>ativ-09</flowNodeRef>
+        <flowNodeRef>ativ-10</flowNodeRef>
+        <flowNodeRef>gw-06</flowNodeRef>
+        <flowNodeRef>ativ-11</flowNodeRef>
+        <flowNodeRef>gw-07</flowNodeRef>
+        <flowNodeRef>ev-03</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-03" name="Fornecedor">
+      </lane>
+      <lane id="lane-ator-04" name="Almoxarifado / Recebimento">
+        <flowNodeRef>ativ-12</flowNodeRef>
+        <flowNodeRef>ativ-13</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-05" name="Gestor Aprovador">
+        <flowNodeRef>ativ-08</flowNodeRef>
+      </lane>
+      <lane id="lane-ator-06" name="Financeiro">
+        <flowNodeRef>ativ-14</flowNodeRef>
+        <flowNodeRef>ev-02</flowNodeRef>
+      </lane>
+    </laneSet>
+
+    <!-- Eventos de início e fim -->
+    <startEvent id="ev-01" name="Necessidade de aquisição identificada"/>
+    <endEvent id="ev-02" name="Pagamento efetuado"/>
+    <endEvent id="ev-03" name="Plano B acionado"/>
+    <endEvent id="ev-04" name="RC devolvida"/>
+
+    <!-- Atividades -->
+    <userTask id="ativ-01" name="Emitir Requisição de Compra"/>
+    <userTask id="ativ-02" name="Analisar Requisição de Compra"/>
+    <userTask id="ativ-03" name="Selecionar fornecedores"/>
+    <userTask id="ativ-04" name="Solicitar cotações aos fornecedores"/>
+    <userTask id="ativ-05" name="Analisar orçamentos recebidos"/>
+    <userTask id="ativ-06" name="Negociar condições com fornecedor"/>
+    <userTask id="ativ-07" name="Emitir Pedido de Compra"/>
+    <userTask id="ativ-08" name="Aprovar Pedido de Compra"/>
+    <userTask id="ativ-09" name="Enviar Pedido de Compra ao fornecedor"/>
+    <userTask id="ativ-10" name="Confirmar recebimento do pedido"/>
+    <userTask id="ativ-11" name="Realizar follow-up de entrega"/>
+    <userTask id="ativ-12" name="Conferir mercadoria e nota fiscal"/>
+    <serviceTask id="ativ-13" name="Lançar nota fiscal no sistema"/>
+    <userTask id="ativ-14" name="Efetuar pagamento"/>
+
+    <!-- Gateways -->
+    <exclusiveGateway id="gw-01" name="RC está clara e correta?"/>
+    <exclusiveGateway id="gw-02" name="Fornecedor ativo na carteira?"/>
+    <exclusiveGateway id="gw-03" name="Mínimo de 3 orçamentos recebidos?"/>
+    <exclusiveGateway id="gw-04" name="Orçamento atende condições da empresa?"/>
+    <exclusiveGateway id="gw-05" name="Exige aprovação por gestor?"/>
+    <exclusiveGateway id="gw-06" name="Fornecedor confirmou recebimento?"/>
+    <exclusiveGateway id="gw-07" name="Fornecedor consegue entregar na data combinada?"/>
+
+    <!-- Sequence Flows -->
+    <sequenceFlow id="sf-ev01-ativ01" sourceRef="ev-01" targetRef="ativ-01"/>
+    <sequenceFlow id="sf-ativ01-gw01" sourceRef="ativ-01" targetRef="gw-01"/>
+
+    <!-- gw-01 -->
+    <sequenceFlow id="sf-gw01-ativ02" sourceRef="gw-01" targetRef="ativ-02">
+      <conditionExpression>Sim → prosseguir para identificação de fornecedores</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw01-ev04" sourceRef="gw-01" targetRef="ev-04">
+      <conditionExpression>Não → solicitar alteração/esclarecimento ao solicitante</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="sf-ativ02-ativ03" sourceRef="ativ-02" targetRef="ativ-03"/>
+    <sequenceFlow id="sf-ativ03-gw02" sourceRef="ativ-03" targetRef="gw-02"/>
+
+    <!-- gw-02 -->
+    <sequenceFlow id="sf-gw02-ativ04-sim" sourceRef="gw-02" targetRef="ativ-04">
+      <conditionExpression>Sim → utilizar histórico e solicitar cotação</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw02-ativ04-nao" sourceRef="gw-02" targetRef="ativ-04">
+      <conditionExpression>Não → desenvolver novo fornecedor</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="sf-ativ04-gw03" sourceRef="ativ-04" targetRef="gw-03"/>
+
+    <!-- gw-03: loop de volta para ativ-04 quando Não -->
+    <sequenceFlow id="sf-gw03-ativ05" sourceRef="gw-03" targetRef="ativ-05">
+      <conditionExpression>Sim → prosseguir para análise</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw03-ativ04" sourceRef="gw-03" targetRef="ativ-04">
+      <conditionExpression>Não → buscar fornecedor adicional até atingir mínimo de 3</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="sf-ativ05-gw04" sourceRef="ativ-05" targetRef="gw-04"/>
+
+    <!-- gw-04 -->
+    <sequenceFlow id="sf-gw04-ativ07" sourceRef="gw-04" targetRef="ativ-07">
+      <conditionExpression>Sim → selecionar fornecedor e emitir Pedido de Compra</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw04-ativ06" sourceRef="gw-04" targetRef="ativ-06">
+      <conditionExpression>Não → negociar condições</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="sf-ativ06-ativ07" sourceRef="ativ-06" targetRef="ativ-07"/>
+    <sequenceFlow id="sf-ativ07-gw05" sourceRef="ativ-07" targetRef="gw-05"/>
+
+    <!-- gw-05 -->
+    <sequenceFlow id="sf-gw05-ativ08" sourceRef="gw-05" targetRef="ativ-08">
+      <conditionExpression>Sim → encaminhar para aprovação</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw05-ativ09" sourceRef="gw-05" targetRef="ativ-09">
+      <conditionExpression>Não → enviar diretamente ao fornecedor</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="sf-ativ08-ativ09" sourceRef="ativ-08" targetRef="ativ-09"/>
+    <sequenceFlow id="sf-ativ09-ativ10" sourceRef="ativ-09" targetRef="ativ-10"/>
+    <sequenceFlow id="sf-ativ10-gw06" sourceRef="ativ-10" targetRef="gw-06"/>
+
+    <!-- gw-06 -->
+    <sequenceFlow id="sf-gw06-ativ11" sourceRef="gw-06" targetRef="ativ-11">
+      <conditionExpression>Sim → iniciar follow-up</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw06-ativ10" sourceRef="gw-06" targetRef="ativ-10">
+      <conditionExpression>Não → contatar fornecedor por telefone para confirmar</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="sf-ativ11-gw07" sourceRef="ativ-11" targetRef="gw-07"/>
+
+    <!-- gw-07 -->
+    <sequenceFlow id="sf-gw07-ativ12" sourceRef="gw-07" targetRef="ativ-12">
+      <conditionExpression>Sim → aguardar entrega</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw07-ev03" sourceRef="gw-07" targetRef="ev-03">
+      <conditionExpression>Não → acionar plano B (fornecedor alternativo)</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="sf-ativ12-ativ13" sourceRef="ativ-12" targetRef="ativ-13"/>
+    <sequenceFlow id="sf-ativ13-ativ14" sourceRef="ativ-13" targetRef="ativ-14"/>
+    <sequenceFlow id="sf-ativ14-ev02" sourceRef="ativ-14" targetRef="ev-02"/>
+
+  </process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="proc_as_is">
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>

@@ -1,0 +1,40 @@
+{
+  "processo": "Gestão de Operações e Compras — Avaliação e Concorrência de Fornecedores",
+  "atores": [
+    { "id": "ator-01", "nome": "Gestor / Consultor de Operações", "tipo": "interno" },
+    { "id": "ator-02", "nome": "Fornecedores", "tipo": "externo" },
+    { "id": "ator-03", "nome": "Transportadora", "tipo": "externo" },
+    { "id": "ator-04", "nome": "Área de Compras", "tipo": "interno" },
+    { "id": "ator-05", "nome": "Tributarista / Especialista Tributário", "tipo": "interno" }
+  ],
+  "atividades": [
+    { "id": "ativ-01", "descricao": "Avaliar se a empresa está comprando bem (análise de custo de compras)", "ator_responsavel": "ator-01", "sistema": null },
+    { "id": "ativ-02", "descricao": "Realizar concorrência semestral com transportadoras", "ator_responsavel": "ator-04", "sistema": null },
+    { "id": "ativ-03", "descricao": "Realizar concorrência semestral com fornecedores da área de compras", "ator_responsavel": "ator-04", "sistema": null },
+    { "id": "ativ-04", "descricao": "Avaliar resultado financeiro dos fornecedores (lucratividade gerada)", "ator_responsavel": "ator-01", "sistema": null },
+    { "id": "ativ-05", "descricao": "Contratar e posicionar especialistas tributários internamente", "ator_responsavel": "ator-01", "sistema": null },
+    { "id": "ativ-06", "descricao": "Acompanhar impactos da reforma tributária nas operações", "ator_responsavel": "ator-05", "sistema": null }
+  ],
+  "eventos": [
+    { "id": "ev-01", "tipo": "start", "descricao": "Início da avaliação periódica de operações e fornecedores" },
+    { "id": "ev-02", "tipo": "end", "descricao": "Encerramento do ciclo de concorrência e definição de fornecedores para próximo período" }
+  ],
+  "gateways": [
+    { "id": "gw-01", "tipo": "exclusive", "descricao": "Tamanho da empresa determina prioridade do processo?", "condicoes": ["Empresa pequena → priorizar vendas", "Empresa maior → priorizar operações e compras"] },
+    { "id": "gw-02", "tipo": "exclusive", "descricao": "Fornecedor gera resultado financeiro satisfatório?", "condicoes": ["Sim → manter fornecedor", "Não → incluir na próxima concorrência"] }
+  ],
+  "sistemas": [],
+  "regras_de_negocio": [
+    { "id": "rn-01", "descricao": "Concorrência com fornecedores e transportadoras deve ocorrer a cada seis meses", "atividade_relacionada": "ativ-02" },
+    { "id": "rn-02", "descricao": "Fornecedor só é mantido se gerar lucro — relacionamento sem resultado financeiro não é critério de permanência", "atividade_relacionada": "ativ-04" },
+    { "id": "rn-03", "descricao": "Em empresas maiores, operações têm prioridade sobre faturamento no diagnóstico inicial", "atividade_relacionada": "ativ-01" },
+    { "id": "rn-04", "descricao": "Área tributária deve ser internalizada para adequação à reforma tributária brasileira", "atividade_relacionada": "ativ-05" }
+  ],
+  "observacoes": [
+    "A transcrição é um relato informal/opinativo — não descreve um fluxo sequencial detalhado com todas as etapas.",
+    "Não há menção a sistemas de informação (ERP, CRM etc.).",
+    "O processo de vendas é citado como prioritário apenas para empresas pequenas; para empresas maiores o foco é operações.",
+    "A reforma tributária é mencionada como contexto externo relevante, mas sem detalhamento de impacto no processo.",
+    "Possível lacuna: critérios objetivos de avaliação dos fornecedores na concorrência não foram descritos."
+  ]
+}
