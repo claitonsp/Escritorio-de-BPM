@@ -4,3 +4,5 @@ _opensquad/_browser_profile/
 *.log
 .vscode/
 scratch/
+set_api_keys.bat
+.hermes/

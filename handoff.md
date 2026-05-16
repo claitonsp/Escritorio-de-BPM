@@ -71,7 +71,7 @@ O TO-BE é produzido manualmente a partir do diagnóstico. Não faz parte do pip
 - **Python**: 3.14.3
 - **Implantação**: local primeiro, VPS após pipeline validado
 
-## Estado atual do projeto (2026-05-16)
+## Estado atual do projeto (2026-05-16 — sessão 2)
 
 ### Pipeline AS-IS — estável
 
@@ -87,62 +87,88 @@ Run de validação `output/2026-05-16-000001/v1/` com transcrição Camila Evers
 ✅ Step 06 — Checkpoint Audit → aprovado
 ```
 
-### Bugs encontrados no BPMN para Bizagi (pendentes de correção)
+### Hermes — instalado e configurado (Fases 1 a 4 concluídas)
 
-O bpmn.io abre sem erro. O Bizagi rejeita pelos bugs abaixo:
-
-**Bug 1 — BPMNPlane aponta para o processo em vez da colaboração (bloqueante)**
-```xml
-<!-- atual (errado) -->
-<bpmndi:BPMNPlane bpmnElement="proc_as_is">
-<!-- correto -->
-<bpmndi:BPMNPlane bpmnElement="collab_01">
+```
+✅ Fase 1 — ffmpeg v8.1.1 instalado, PATH fixo, variáveis de ambiente setadas
+✅ Fase 2 — Hermes v0.13.0 instalado, provider Anthropic configurado
+✅ Fase 3 — Gateway Telegram ativo (estado: connected)
+✅ Fase 4 — 4 skills BPM instaladas em ~/.hermes/skills/local/
 ```
 
-**Bug 2 — Pool shape referencia ID inexistente**
-O shape usa `bpmnElement="pool_proc_as_is"` mas o participant tem `id="part-empresa"`. IDs não casam.
+Skills criadas em `skills/` (fonte canônica, versionada no git):
+- `bpm-pre-reuniao` — coleta contexto antes da reunião
+- `bpm-transcricao` — Whisper com vocabulário de contexto
+- `bpm-revisao` — clarificação pós-transcrição
+- `bpm-pipeline` — dispara opensquad e notifica
 
-**Bug 3 — Nenhum BPMNShape para o Pool Fornecedor**
-`<participant id="part-ator-03" name="Fornecedor">` existe no modelo mas não tem shape no BPMNDiagram. Bizagi rejeita pools sem representação visual.
+Script `install-skills.bat` na raiz: copia de `skills/` para `~/.hermes/skills/local/`.
 
-Correção deve ser feita no `bpmn-layout.js` e validada com import no Bizagi.
+**Atenção:** API keys no `.hermes/.env` são as antigas (revogadas). Atualizar antes da Fase 6.
+
+### bpmn-layout.js — correções aplicadas nesta sessão
+
+**Bugs Bizagi corrigidos (3 bugs originais):**
+- BPMNPlane agora referencia `collab_01` (colaboração), não o processo
+- Pool shape usa ID real do participant (`part-empresa`)
+- BPMNShape gerado para todos os pools externos (Fornecedor)
+
+**Melhorias adicionais (análise CBOK/BPMN 2.0):**
+- BPMNLabel gerado para arestas com nome (fix: labels "Sim"/"Não" apareciam em coordenada 0,0)
+- Message Flow routing corrigido (fix: X do destino usava X da origem, setas iam para lugar errado)
+- Validação de cross-pool: script avisa se sequenceFlow cruza fronteira de pool (violação BPMN 2.0)
+- Suporte completo a Message Flows no diagrama DI
+
+**Pendente — validação final no Bizagi:**
+O arquivo atualizado ainda não foi importado e validado visualmente no Bizagi. Fazer na próxima sessão.
 
 ### Próxima ação: instalar Hermes localmente
 
 Antes de subir para VPS, o fluxo completo será validado local.
 
-Checklist de instalação (próxima sessão):
+Checklist de instalação (status):
 
 **Fase 1 — Pré-requisitos**
-- [ ] Instalar ffmpeg via winget (necessário para Whisper processar áudio)
-- [ ] Separar API key: Anthropic para Hermes, OpenAI para Whisper
+- [x] Instalar ffmpeg via winget
+- [x] Configurar API keys (Anthropic + OpenAI) — atualizar para as chaves novas antes do teste
 
 **Fase 2 — Hermes**
-- [ ] `pip install hermes-agent`
-- [ ] `hermes postinstall`
-- [ ] `hermes setup` (configurar provider e API key)
-- [ ] `hermes --tui` (confirmar funcionamento)
+- [x] `pip install hermes-agent` (v0.13.0)
+- [x] Configurar provider e API key
+- [x] Confirmar funcionamento (hermes chat retornou erro de saldo, não de autenticação)
 
 **Fase 3 — Gateway Telegram**
-- [ ] Criar bot no BotFather e guardar token
-- [ ] `hermes gateway setup` (configurar Telegram)
-- [ ] Testar mensagem de texto e mensagem de voz
+- [x] Bot criado no BotFather
+- [x] Gateway configurado e ativo
+- [x] Texto e voz testados com sucesso
 
 **Fase 4 — Skills BPM**
-- [ ] Skill `bpm-pre-reuniao`: coleta contexto antes da reunião
-- [ ] Skill `bpm-transcricao`: Whisper com vocabulário de contexto
-- [ ] Skill `bpm-revisao`: perguntas de clarificação pós-transcrição
-- [ ] Skill `bpm-pipeline`: dispara opensquad e notifica quando pronto
+- [x] Skill `bpm-pre-reuniao`: coleta contexto antes da reunião
+- [x] Skill `bpm-transcricao`: Whisper com vocabulário de contexto
+- [x] Skill `bpm-revisao`: perguntas de clarificação pós-transcrição
+- [x] Skill `bpm-pipeline`: dispara opensquad e notifica quando pronto
 
 **Fase 5 — Correção Bizagi**
-- [ ] Corrigir os 3 bugs no `bpmn-layout.js`
-- [ ] Validar import no Bizagi
+- [x] Corrigir os 3 bugs no `bpmn-layout.js`
+- [ ] Validar import no Bizagi (pendente — fazer na próxima sessão)
 
 **Fase 6 — Teste ponta a ponta (local)**
+- [ ] Atualizar API keys no `.hermes/.env` para as chaves novas
 - [ ] Gravar reunião simulada, enviar pelo Telegram, receber BPMN
 
 **Fase 7 — Subir para VPS**
 - [ ] Somente após fase 6 validada
+
+### Débitos técnicos identificados (análise CBOK 4.0)
+
+Pontos levantados pela análise do diagrama — corrigir nos agentes na próxima sessão:
+
+| Agente | Melhoria pendente |
+|---|---|
+| 01-elicitador | Classificar tipo de tarefa: userTask, serviceTask, scriptTask |
+| 03-modelador | Regra explícita: ator externo = messageFlow obrigatório, nunca sequenceFlow |
+| 04-checkpoint-bpmn | Validação topológica: cross-pool, dead ends, labels ausentes em todas saídas de gateway |
+| 05-auditor | Validar estados finais semanticamente (ex: "Plano B acionado" não é end state válido) |
 
 ## Arquitetura dos agentes (estado atual dos prompts)
 

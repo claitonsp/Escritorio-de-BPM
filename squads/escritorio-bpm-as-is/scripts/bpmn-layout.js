@@ -51,6 +51,28 @@ function getProcessId() {
   return m ? m[1] : 'proc_1';
 }
 
+function getCollaborationId() {
+  const m = xml.match(/<collaboration\s[^>]*id="([^"]+)"/);
+  return m ? m[1] : null;
+}
+
+function getParticipants() {
+  const participants = [];
+  const re = /<participant\s([^>]*?)(?:\/>|>)/g;
+  let m;
+  while ((m = re.exec(xml)) !== null) {
+    const attrs = parseAttrs(m[1]);
+    if (attrs.id) {
+      participants.push({
+        id: attrs.id,
+        name: attrs.name || attrs.id,
+        processRef: attrs.processRef || null,
+      });
+    }
+  }
+  return participants;
+}
+
 // ─── 1. EXTRAÇÃO DE LANES ───────────────────────────────────────────────────
 const laneOrder = [];   // [laneId, ...]  — ordem de aparição no XML
 const laneNames = {};   // laneId → name
@@ -82,14 +104,23 @@ while ((nm = nodeTagRe.exec(xml)) !== null) {
   nodes[attrs.id] = { id: attrs.id, type, name: attrs.name || '' };
 }
 
-// ─── 3. EXTRAÇÃO DE SEQUENCEFLOWS ───────────────────────────────────────────
-const flows = [];   // { id, source, target, name }
-const flowRe = /<sequenceFlow\s([^>]*?)(?:\/>|>[\s\S]*?<\/sequenceFlow>)/g;
-let fm;
-while ((fm = flowRe.exec(xml)) !== null) {
-  const attrs = parseAttrs(fm[1]);
+// ─── 3. EXTRAÇÃO DE FLOWS (Sequence e Message) ──────────────────────────────
+const flows = [];   // { id, source, target, name, type: 'sequence' | 'message' }
+const sequenceFlowRe = /<sequenceFlow\s([^>]*?)(?:\/>|>[\s\S]*?<\/sequenceFlow>)/g;
+let sfm;
+while ((sfm = sequenceFlowRe.exec(xml)) !== null) {
+  const attrs = parseAttrs(sfm[1]);
   if (attrs.id && attrs.sourceRef && attrs.targetRef) {
-    flows.push({ id: attrs.id, source: attrs.sourceRef, target: attrs.targetRef, name: attrs.name || '' });
+    flows.push({ id: attrs.id, source: attrs.sourceRef, target: attrs.targetRef, name: attrs.name || '', type: 'sequence' });
+  }
+}
+
+const messageFlowRe = /<messageFlow\s([^>]*?)(?:\/>|>[\s\S]*?<\/messageFlow>)/g;
+let mfm;
+while ((mfm = messageFlowRe.exec(xml)) !== null) {
+  const attrs = parseAttrs(mfm[1]);
+  if (attrs.id && attrs.sourceRef && attrs.targetRef) {
+    flows.push({ id: attrs.id, source: attrs.sourceRef, target: attrs.targetRef, name: attrs.name || '', type: 'message' });
   }
 }
 
@@ -98,12 +129,29 @@ if (Object.keys(nodes).length === 0) {
   process.exit(1);
 }
 
+// ─── 3b. AUDITORIA: Sequence Flows cruzando pools ───────────────────────────
+// Um sequenceFlow cujo source está em uma lane (pool interno) e o target NÃO
+// está em nenhuma lane (pool externo) é uma violação BPMN 2.0 — deve ser messageFlow.
+const crossPoolFlows = flows.filter(f =>
+  f.type === 'sequence' &&
+  ((elemToLane[f.source] && !elemToLane[f.target]) ||
+   (!elemToLane[f.source] && elemToLane[f.target]))
+);
+if (crossPoolFlows.length > 0) {
+  console.warn(`\n  ⚠ AVISO BPMN 2.0 — ${crossPoolFlows.length} sequenceFlow(s) cruzando fronteira de pool:`);
+  for (const f of crossPoolFlows) {
+    console.warn(`    [${f.id}] ${f.source} → ${f.target} (deve ser messageFlow)`);
+  }
+  console.warn(`  Estes fluxos serão ignorados no layout. Corrija o modelo no 03-modelador.\n`);
+}
+
 // ─── 4. TOPOLOGICAL SORT + LONGEST-PATH (coluna) ────────────────────────────
-// Construção do grafo de adjacência
+// Construção do grafo de adjacência (apenas para sequence flows)
 const adj  = {};   // id → [id, ...]  (forward edges)
 const radj = {};   // id → [id, ...]  (reverse edges)
 for (const id of Object.keys(nodes)) { adj[id] = []; radj[id] = []; }
 for (const f of flows) {
+  if (f.type !== 'sequence') continue;
   if (adj[f.source])  adj[f.source].push(f.target);
   if (radj[f.target]) radj[f.target].push(f.source);
 }
@@ -111,7 +159,9 @@ for (const f of flows) {
 // Kahn's algorithm para detectar back-edges e obter topological order
 const inDeg = {};
 for (const id of Object.keys(nodes)) inDeg[id] = 0;
-for (const f of flows) { if (inDeg[f.target] !== undefined) inDeg[f.target]++; }
+for (const f of flows) { 
+  if (f.type === 'sequence' && inDeg[f.target] !== undefined) inDeg[f.target]++; 
+}
 
 const queue = Object.keys(nodes).filter(id => inDeg[id] === 0);
 const topoOrder = [];
@@ -138,7 +188,7 @@ const topoPos = {};
 topoOrder.forEach((id, i) => topoPos[id] = i);
 const backEdgeSet = new Set(); // flowId
 for (const f of flows) {
-  if ((topoPos[f.source] ?? 0) >= (topoPos[f.target] ?? 0)) {
+  if (f.type === 'sequence' && (topoPos[f.source] ?? 0) >= (topoPos[f.target] ?? 0)) {
     backEdgeSet.add(f.id);
   }
 }
@@ -148,7 +198,7 @@ const col = {};
 for (const id of Object.keys(nodes)) col[id] = 0;
 for (const id of topoOrder) {
   for (const f of flows) {
-    if (f.source !== id) continue;
+    if (f.type !== 'sequence' || f.source !== id) continue;
     if (backEdgeSet.has(f.id)) continue;
     if ((col[f.target] ?? 0) <= col[id]) {
       col[f.target] = col[id] + 1;
@@ -223,17 +273,40 @@ for (const id of Object.keys(nodes)) {
 }
 
 // ─── 7. GERAÇÃO DO XML DI ───────────────────────────────────────────────────
-const processId = getProcessId();
-const poolId    = `pool_${processId}`;
+const processId       = getProcessId();
+const collaborationId = getCollaborationId();
+const participants    = getParticipants();
+const mainParticipant = participants.find(p => p.processRef === processId);
+const mainPartId      = mainParticipant ? mainParticipant.id : `pool_${processId}`;
+const externalParticipants = participants.filter(p => !p.processRef);
+
+const EXT_POOL_H      = 60;
+const EXT_POOL_MARGIN = 20;
+
+// Y para os pools externos e margem de back-edges
+const extPoolsY0 = totalLanesH + 100; // Afasta os pools externos para dar espaço a back-edges
+const backEdgeY  = totalLanesH + BACK_MARGIN; 
 
 const shapeLines = [];
 
 // Pool shape (contentor externo)
 shapeLines.push(
-  `    <bpmndi:BPMNShape id="${poolId}_di" bpmnElement="${poolId}" isHorizontal="true">`,
+  `    <bpmndi:BPMNShape id="${mainPartId}_di" bpmnElement="${mainPartId}" isHorizontal="true">`,
   `      <dc:Bounds x="0" y="0" width="${totalW}" height="${totalLanesH}" />`,
   `    </bpmndi:BPMNShape>`
 );
+
+// Adicionar bounds dos pools externos ao mapa de bounds para roteamento de MessageFlow
+let extY = extPoolsY0;
+for (const ext of externalParticipants) {
+  bounds[ext.id] = { x: 0, y: extY, w: totalW, h: EXT_POOL_H };
+  shapeLines.push(
+    `    <bpmndi:BPMNShape id="${ext.id}_di" bpmnElement="${ext.id}" isHorizontal="true">`,
+    `      <dc:Bounds x="0" y="${extY}" width="${totalW}" height="${EXT_POOL_H}" />`,
+    `    </bpmndi:BPMNShape>`
+  );
+  extY += EXT_POOL_H + EXT_POOL_MARGIN;
+}
 
 // Lane shapes
 for (const laneId of laneOrder) {
@@ -251,8 +324,6 @@ for (const id of Object.keys(nodes)) {
   const b = bounds[id];
   if (!b) continue;
   const isGateway = nodes[id].type.includes('Gateway');
-  const isEvent   = nodes[id].type === 'startEvent' || nodes[id].type === 'endEvent' ||
-                    nodes[id].type.includes('Intermediate');
   const extra = isGateway ? ' isMarkerVisible="true"' : '';
   shapeLines.push(
     `    <bpmndi:BPMNShape id="${id}_di" bpmnElement="${id}"${extra}>`,
@@ -263,85 +334,105 @@ for (const id of Object.keys(nodes)) {
 
 // Edge shapes (BPMNEdge com waypoints)
 const edgeLines = [];
-const backEdgeY = totalLanesH + BACK_MARGIN; // Y para rotear back-edges abaixo das lanes
 
 for (const f of flows) {
   const src = bounds[f.source];
   const tgt = bounds[f.target];
-  if (!src || !tgt) {
-    console.warn(`  Aviso: edge ${f.id} sem bounds (${f.source} ou ${f.target} não posicionado)`);
-    continue;
-  }
+  if (!src || !tgt) continue;
 
-  const srcLane = elemToLane[f.source];
-  const tgtLane = elemToLane[f.target];
-  const crossLane = srcLane !== tgtLane;
-  const isBack    = backEdgeSet.has(f.id);
+  const isBack = backEdgeSet.has(f.id);
+  const isMessage = f.type === 'message';
 
-  // Pontos de saída / entrada (centro-direita / centro-esquerda por padrão)
-  const x1 = src.x + src.w;
-  const y1 = Math.round(src.y + src.h / 2);
-  const x2 = tgt.x;
-  const y2 = Math.round(tgt.y + tgt.h / 2);
-
-  let waypoints;
+  let waypoints = [];
 
   if (isBack) {
-    // Back-edge: sai pela parte inferior da origem, desce abaixo das lanes, entra pelo topo do destino
-    const srcBot = src.y + src.h;
-    const tgtBot = tgt.y + tgt.h;
-    const mx     = Math.round((src.x + src.w / 2 + tgt.x + tgt.w / 2) / 2);
+    // Back-edge: sai por baixo, passa pela calha BACK_MARGIN, entra por baixo
     waypoints = [
-      { x: Math.round(src.x + src.w / 2), y: srcBot },
+      { x: Math.round(src.x + src.w / 2), y: src.y + src.h },
       { x: Math.round(src.x + src.w / 2), y: backEdgeY },
       { x: Math.round(tgt.x + tgt.w / 2), y: backEdgeY },
-      { x: Math.round(tgt.x + tgt.w / 2), y: tgt.y }
+      { x: Math.round(tgt.x + tgt.w / 2), y: tgt.y + tgt.h }
     ];
-  } else if (crossLane) {
-    // Seta em L: horizontal até o ponto médio X, depois vertical até a lane alvo, depois horizontal
-    const midX = Math.round(x1 + (x2 - x1) / 2);
-    waypoints = [
-      { x: x1, y: y1 },
-      { x: midX, y: y1 },
-      { x: midX, y: y2 },
-      { x: x2, y: y2 }
-    ];
+  } else if (isMessage) {
+    // Message Flow: liga centro-inferior da origem ao centro-superior do destino (ou vice-versa)
+    // Usa X de cada extremidade corretamente (fix: antes usava src.x para ambos os pontos)
+    const srcMidX = Math.round(src.x + src.w / 2);
+    const tgtMidX = Math.round(tgt.x + tgt.w / 2);
+    if (src.y < tgt.y) {
+      waypoints = [
+        { x: srcMidX, y: src.y + src.h },
+        { x: tgtMidX, y: tgt.y }
+      ];
+    } else {
+      waypoints = [
+        { x: srcMidX, y: src.y },
+        { x: tgtMidX, y: tgt.y + tgt.h }
+      ];
+    }
   } else {
-    // Mesma lane: linha reta
-    waypoints = [
-      { x: x1, y: y1 },
-      { x: x2, y: y2 }
-    ];
+    // Sequence Flow padrão (cotovelo L se mudar de lane, reta se mesma lane)
+    const srcLane = elemToLane[f.source];
+    const tgtLane = elemToLane[f.target];
+    if (srcLane && tgtLane && srcLane !== tgtLane) {
+      const midX = Math.round(src.x + src.w + (tgt.x - (src.x + src.w)) / 2);
+      waypoints = [
+        { x: src.x + src.w, y: Math.round(src.y + src.h / 2) },
+        { x: midX, y: Math.round(src.y + src.h / 2) },
+        { x: midX, y: Math.round(tgt.y + tgt.h / 2) },
+        { x: tgt.x, y: Math.round(tgt.y + tgt.h / 2) }
+      ];
+    } else {
+      waypoints = [
+        { x: src.x + src.w, y: Math.round(src.y + src.h / 2) },
+        { x: tgt.x, y: Math.round(tgt.y + tgt.h / 2) }
+      ];
+    }
   }
 
   const wStr = waypoints.map(p => `      <di:waypoint x="${p.x}" y="${p.y}" />`).join('\n');
+
+  // BPMNLabel: posiciona o texto no ponto médio da aresta (fix: antes era omitido)
+  let labelStr = '';
+  if (f.name) {
+    const midX = Math.round((waypoints[0].x + waypoints[waypoints.length - 1].x) / 2) - 25;
+    const midY = Math.round((waypoints[0].y + waypoints[waypoints.length - 1].y) / 2) - 14;
+    labelStr = `\n      <bpmndi:BPMNLabel>\n        <dc:Bounds x="${midX}" y="${midY}" width="50" height="14" />\n      </bpmndi:BPMNLabel>`;
+  }
+
   edgeLines.push(
     `    <bpmndi:BPMNEdge id="${f.id}_di" bpmnElement="${f.id}">`,
-    wStr,
+    wStr + labelStr,
     `    </bpmndi:BPMNEdge>`
   );
 }
 
-// ─── 8. INJEÇÃO DO DI NO XML ORIGINAL ───────────────────────────────────────
-// Limpa qualquer BPMNPlane existente e substitui
+// ─── 8. INJEÇÃO E LIMPEZA FINAL ─────────────────────────────────────────────
 const diBlock = [
   `  <bpmndi:BPMNDiagram id="BPMNDiagram_1">`,
-  `    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="${processId}">`,
+  `    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="${collaborationId || processId}">`,
   shapeLines.join('\n'),
   edgeLines.join('\n'),
   `    </bpmndi:BPMNPlane>`,
   `  </bpmndi:BPMNDiagram>`
 ].join('\n');
 
-// Substitui bloco BPMNDiagram completo (ou injeta antes de </definitions>)
-let result;
-if (/<bpmndi:BPMNDiagram[\s\S]*?<\/bpmndi:BPMNDiagram>/.test(xml)) {
-  result = xml.replace(/<bpmndi:BPMNDiagram[\s\S]*?<\/bpmndi:BPMNDiagram>/, diBlock);
+let result = xml;
+
+// Limpeza de atributos não padrão que quebram o Bizagi (isExecutable em participant)
+result = result.replace(/(<participant\s[^>]*)\sisExecutable="[^"]*"/g, '$1');
+
+// Substitui bloco BPMNDiagram completo
+if (/<bpmndi:BPMNDiagram[\s\S]*?<\/bpmndi:BPMNDiagram>/.test(result)) {
+  result = result.replace(/<bpmndi:BPMNDiagram[\s\S]*?<\/bpmndi:BPMNDiagram>/, diBlock);
 } else {
-  result = xml.replace(/<\/definitions>/, `${diBlock}\n</definitions>`);
+  result = result.replace(/<\/definitions>/, `${diBlock}\n</definitions>`);
 }
 
 fs.writeFileSync(outputFile, result, 'utf8');
+
+console.log(`bpmn-layout: OK (incluindo MessageFlows e correções Bizagi)`);
+console.log(`  Output  : ${outputFile}`);
+
 
 // ─── RELATÓRIO ──────────────────────────────────────────────────────────────
 const nShapes  = Object.keys(nodes).length + laneOrder.length + 1; // +1 pool
