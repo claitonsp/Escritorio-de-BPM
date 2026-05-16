@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://escritorio-bpm/as-is"
+             id="definitions_as_is">
+
+  <collaboration id="collab_01">
+    <participant id="part-empresa" name="Empresa" processRef="proc_as_is"/>
+    <participant id="part-cliente" name="Cliente" isExecutable="false"/>
+    <messageFlow id="mf-part-cliente-ev01" sourceRef="part-cliente" targetRef="ev-01"/>
+    <messageFlow id="mf-ativ04-part-cliente" sourceRef="ativ-04" targetRef="part-cliente"/>
+  </collaboration>
+
+  <process id="proc_as_is" name="Conciliação e Baixa de Títulos" isExecutable="false">
+    <laneSet id="ls_01">
+      <lane id="lane-analista" name="Analista Financeiro">
+        <flowNodeRef>ev-01</flowNodeRef>
+        <flowNodeRef>ativ-01</flowNodeRef>
+        <flowNodeRef>ativ-02</flowNodeRef>
+        <flowNodeRef>gw-01</flowNodeRef>
+        <flowNodeRef>ativ-03</flowNodeRef>
+        <flowNodeRef>ev-fim-01</flowNodeRef>
+        <flowNodeRef>ativ-04</flowNodeRef>
+        <flowNodeRef>gw-02</flowNodeRef>
+        <flowNodeRef>timer-01</flowNodeRef>
+        <flowNodeRef>ativ-05</flowNodeRef>
+        <flowNodeRef>ev-fim-02</flowNodeRef>
+      </lane>
+    </laneSet>
+
+    <startEvent id="ev-01" name="Pagamento recebido">
+      <messageEventDefinition id="med-01"/>
+    </startEvent>
+
+    <userTask id="ativ-01" name="Identificar Recebimento"/>
+    <userTask id="ativ-02" name="Realizar Conciliação"/>
+
+    <exclusiveGateway id="gw-01" name="Existe divergência?"/>
+
+    <serviceTask id="ativ-03" name="Baixar Título via Sistema"/>
+    <endEvent id="ev-fim-01" name="Título baixado"/>
+
+    <userTask id="ativ-04" name="Acionar Cliente"/>
+
+    <exclusiveGateway id="gw-02" name="Problema foi resolvido?"/>
+
+    <intermediateCatchEvent id="timer-01" name="Aguardar 24h">
+      <timerEventDefinition id="ted-01">
+        <timeDuration xsi:type="tFormalExpression">PT24H</timeDuration>
+      </timerEventDefinition>
+    </intermediateCatchEvent>
+
+    <userTask id="ativ-05" name="Baixar Título Manual"/>
+    <endEvent id="ev-fim-02" name="Título baixado"/>
+
+    <sequenceFlow id="sf-ev01-ativ01" sourceRef="ev-01" targetRef="ativ-01"/>
+    <sequenceFlow id="sf-ativ01-ativ02" sourceRef="ativ-01" targetRef="ativ-02"/>
+    <sequenceFlow id="sf-ativ02-gw01" sourceRef="ativ-02" targetRef="gw-01"/>
+
+    <sequenceFlow id="sf-gw01-ativ03" name="Não" sourceRef="gw-01" targetRef="ativ-03">
+      <conditionExpression>Não</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw01-ativ04" name="Sim" sourceRef="gw-01" targetRef="ativ-04">
+      <conditionExpression>Sim</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="sf-ativ03-evfim01" sourceRef="ativ-03" targetRef="ev-fim-01"/>
+
+    <sequenceFlow id="sf-ativ04-gw02" sourceRef="ativ-04" targetRef="gw-02"/>
+
+    <sequenceFlow id="sf-gw02-ativ05" name="Sim" sourceRef="gw-02" targetRef="ativ-05">
+      <conditionExpression>Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw02-timer01" name="Não" sourceRef="gw-02" targetRef="timer-01">
+      <conditionExpression>Não</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-timer01-ativ04" sourceRef="timer-01" targetRef="ativ-04"/>
+
+    <sequenceFlow id="sf-ativ05-evfim02" sourceRef="ativ-05" targetRef="ev-fim-02"/>
+  </process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="collab_01">
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

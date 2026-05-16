@@ -71,9 +71,9 @@ O TO-BE é produzido manualmente a partir do diagnóstico. Não faz parte do pip
 - **Python**: 3.14.3
 - **Implantação**: local primeiro, VPS após pipeline validado
 
-## Estado atual do projeto (2026-05-16 — sessão 3)
+## Estado atual do projeto (2026-05-16 — sessão 4)
 
-### Pipeline AS-IS — estável
+### Pipeline AS-IS — estável e validado com segundo processo
 
 Run de validação `output/2026-05-16-000001/v1/` com transcrição Camila Evers (Processo de Compras):
 
@@ -85,6 +85,16 @@ Run de validação `output/2026-05-16-000001/v1/` com transcrição Camila Evers
 ✅ Step 04 — Checkpoint BPMN  → aprovado (2 correções automáticas)
 ✅ Step 05 — Auditor          → diagnostico-as-is.json (5 achados)
 ✅ Step 06 — Checkpoint Audit → aprovado
+```
+
+Run de validação `output/2026-05-16-000003/v1/` com processo de texto (Conciliação e Baixa de Títulos):
+
+```
+✅ Step 01 — Elicitador       → elicitacao.json (5 ativ, 2 gw, 3 eventos, 1 ator externo)
+✅ Step 03 — Modelador        → processo-as-is.bpmn (collaboration + messageFlow + timer)
+✅ bpmn-layout.js             → processo-as-is-layout.bpmn
+✅ Step 04 — Checkpoint BPMN  → 8/8 aprovadas
+✅ Validado no bpmn.io        → Message Start Event, lanes, timer, loop intra-lane confirmados
 ```
 
 ### Hermes — instalado e configurado (Fases 1 a 4 concluídas)
@@ -124,8 +134,13 @@ Script `install-skills.bat` na raiz: copia de `skills/` para `~/.hermes/skills/l
 - BPMNLabel reposicionado por segmento central da aresta: horizontal empurra label para cima (y - 22), vertical empurra para a direita (x + 6). Labels "Sim"/"Não" não sobrepõem mais a linha.
 - Message Flow ortogonal: detecta se extremidade é Pool inteiro (w === totalW) e alinha verticalmente, eliminando diagonais que cruzavam o diagrama. Nó a nó usa cotovelo em L.
 
+**Sessão 4 — Correções estruturais no layout engine:**
+- `nodeTagRe` atualizado para aceitar namespace prefix opcional `(?:[\w-]+:)?` — suporte a BPMNs de Camunda e outras ferramentas.
+- Loop intra-lane roteado pelo teto da própria raia (`localLoopY = laneY[srcLane] + 15`) em vez de descer até `backEdgeY`. Loop cross-lane continua usando calha inferior.
+- `elemSize` corrigido para case-insensitive com `type.toLowerCase()` — `intermediateCatchEvent` agora retorna 36×36 corretamente (bug: comparação `'IntermediateCatch'` falhava contra string lowercase).
+
 **Pendente — validação final no Bizagi:**
-O arquivo ainda não foi importado e validado visualmente no Bizagi. Fazer na próxima sessão.
+Validado no bpmn.io (sessão 4). Import no Bizagi ainda pendente.
 
 ### Agentes — melhorias aplicadas na sessão 3
 
@@ -144,6 +159,19 @@ O arquivo ainda não foi importado e validado visualmente no Bizagi. Fazer na pr
 - Verificação 1f: grep detecta sequenceFlow cujo sourceRef ou targetRef aponta para participant
 - Verificação 1g: grep detecta targetRef duplicados (convergência implícita)
 - Total de verificações: 7 (era 5)
+
+### Agentes — melhorias aplicadas na sessão 4
+
+**`01-elicitador.md`:**
+- Regra de unicidade de nomes: atividades com mesmo conceito mas `ator_responsavel` ou `task_type` distintos obrigam nomes diferentes. Exemplo: `"Baixar Título via Sistema"` vs `"Baixar Título Manual"`.
+
+**`03-modelador.md`:**
+- Regra 5 reescrita: loop sem controle não gera mais comentário XML — gera `<intermediateCatchEvent>` com `<timerEventDefinition>PT24H</timerEventDefinition>` obrigatório entre o gateway e a atividade de retorno. Template XML completo incluído no prompt.
+
+**`04-checkpoint-bpmn.md`:**
+- Verificação 1h adicionada: detecta back-edge direto de gateway para atividade sem timer intermediário.
+- Nota cruzada 1g × 1h: `targetRef` duplicado em 1g é loop intencional quando o segundo sourceRef é `intermediateCatchEvent`.
+- Total de verificações: 8 (era 7)
 
 ### Checklist de fases
 
@@ -168,8 +196,9 @@ O arquivo ainda não foi importado e validado visualmente no Bizagi. Fazer na pr
 - [x] Skill `bpm-pipeline`: dispara opensquad e notifica quando pronto
 
 **Fase 5 — Validação Bizagi**
-- [x] Corrigir bugs de compatibilidade no `bpmn-layout.js` (concluído em sessões 2 e 3)
-- [ ] Validar import no Bizagi (pendente — próxima sessão)
+- [x] Corrigir bugs de compatibilidade no `bpmn-layout.js` (concluído em sessões 2, 3 e 4)
+- [x] Validar no bpmn.io (sessão 4 — Message Start Event, lanes, timer, loop confirmados)
+- [ ] Validar import no Bizagi (pendente)
 
 **Fase 6 — Teste ponta a ponta (local)**
 - [ ] Atualizar API keys no `.hermes/.env` para as chaves novas
@@ -183,12 +212,16 @@ O arquivo ainda não foi importado e validado visualmente no Bizagi. Fazer na pr
 | Agente | Status |
 |---|---|
 | 01-elicitador — campo `task_type` | Concluído (sessão 3) |
+| 01-elicitador — unicidade de nomes por ator/task_type | Concluído (sessão 4) |
 | 03-modelador — messageFlow obrigatório para externos | Concluído (sessão 3) |
 | 03-modelador — convergência implícita proibida | Concluído (sessão 3) |
 | 03-modelador — atividade terminal gera endEvent | Concluído (sessão 3) |
+| 03-modelador — loop gera timer (PT24H) em vez de comentário | Concluído (sessão 4) |
 | 04-checkpoint-bpmn — detecção cross-pool e convergência | Concluído (sessão 3) |
+| 04-checkpoint-bpmn — detecção loop sem controle (1h) | Concluído (sessão 4) |
+| bpmn-layout.js — namespace prefix, loop intra-lane, elemSize | Concluído (sessão 4) |
 | 05-auditor — validar estados finais semanticamente | Pendente |
-| Rodar novo pipeline com agentes corrigidos e validar no Bizagi | Pendente |
+| Validar import no Bizagi | Pendente |
 
 ## Arquitetura dos agentes (estado atual dos prompts)
 
@@ -202,11 +235,13 @@ Campo `nome_bpmn` gerado diretamente pelo agente:
 
 Campo `task_type` obrigatório em atividades: `"userTask" | "serviceTask" | "scriptTask"`. Regra: humano sem sistema = userTask; sistema executa ou medeia = serviceTask; dúvida = userTask.
 
+Unicidade de nomes: duas atividades com mesmo conceito mas `ator_responsavel` ou `task_type` distintos obrigam nomes diferentes. Exemplo: `"Baixar Título via Sistema"` (serviceTask) vs `"Baixar Título Manual"` (userTask).
+
 Campo `condicoes` com estrutura explícita:
 ```json
 { "label": "Sim", "descricao": "...", "destino_tipo": "atividade | evento_fim | loop", "destino_id": "ativ-XX" }
 ```
-`destino_tipo: "loop"` gera Sequence Flow de retorno, nunca End Event.
+`destino_tipo: "loop"` gera Sequence Flow de retorno + timer intermediário, nunca End Event.
 
 Ator externo: `"tipo": "externo"` gera Pool Black Box. Nunca Lane.
 
@@ -216,7 +251,7 @@ Ator externo: `"tipo": "externo"` gera Pool Black Box. Nunca Lane.
 2. Lane vazia proibida
 3. `name=` usa `nome_bpmn`, nunca `descricao`
 4. Todas as saídas de gateway têm `name="Sim"` ou `name="Não"`
-5. Loop = Sequence Flow de retorno, nunca End Event; loops sem limite geram comentário XML
+5. Loop = Sequence Flow de retorno com `<intermediateCatchEvent timerEventDefinition PT24H>` obrigatório antes da atividade de destino. Nunca End Event, nunca apenas comentário XML.
 6. Sequência Flow nunca cruza fronteira de Pool — sempre messageFlow
 7. Gateway divergente exige gateway convergente antes da próxima tarefa comum (proíbe convergência implícita)
 8. Atividade terminal sem saída definida recebe `<endEvent>` imediato
@@ -228,14 +263,15 @@ Reescrito genérico com as mesmas regras do Modelador.
 
 ### `04-checkpoint-bpmn.md`
 
-Validação automática com grep bloqueia se (7 verificações):
+Validação automática com grep bloqueia se (8 verificações):
 - 1a. Lane sem flowNodeRef
 - 1b. `name=` com mais de 50 caracteres
 - 1c. Lane vazia
 - 1d. Gateway com saída sem `name=`
 - 1e. Ator externo modelado como Lane
 - 1f. sequenceFlow cujo sourceRef ou targetRef aponta para participant (cross-pool)
-- 1g. targetRef duplicados em sequenceFlows (convergência implícita — inspeção manual)
+- 1g. targetRef duplicados em sequenceFlows (convergência implícita — inspeção manual; cruzar com 1h)
+- 1h. Loop sem controle — back-edge direto de gateway para atividade sem timer intermediário
 
 ### `08-checkpoint-tobe.md`
 
@@ -259,6 +295,12 @@ Message Flow routing: detecta se extremidade é Pool (w === totalW) e usa waypoi
 
 BPMNLabel: usa segmento central da aresta. Horizontal: y - 22. Vertical: x + 6.
 
+Back-edge routing (sessão 4): intra-lane vai pelo teto da raia (`localLoopY = laneY[srcLane] + 15`); cross-lane vai pela calha inferior (`backEdgeY`).
+
+`elemSize` (sessão 4): usa `type.toLowerCase()` — corrige falha de `'intermediateCatchEvent'.includes('IntermediateCatch')` que retornava false e renderizava eventos como caixas 120×60.
+
+`nodeTagRe` (sessão 4): aceita namespace prefix `(?:[\w-]+:)?` — compatível com exportações de Camunda e outras ferramentas.
+
 Limitação conhecida: 23 colunas no diagrama atual refletem o modelo linear do processo de compras — esperado.
 
 ## Status das regras BPMN
@@ -281,6 +323,11 @@ Limitação conhecida: 23 colunas no diagrama atual refletem o modelo linear do 
 | Pool engloba calha de back-edges | Validado (sessão 3) |
 | Message Flow ortogonal sem diagonais | Validado (sessão 3) |
 | BPMNLabel sem sobreposição na linha | Validado (sessão 3) |
+| Unicidade de nomes por ator/task_type | Validado (sessão 4) |
+| Loop gera timer intermediário (PT24H) | Validado (sessão 4) |
+| Loop intra-lane roteado pelo teto da raia | Validado (sessão 4) |
+| intermediateCatchEvent com tamanho 36x36 | Validado (sessão 4) |
+| Validado no bpmn.io | Validado (sessão 4) |
 | Validar import visual no Bizagi | Pendente |
 
 ## Achados do Auditor (run 2026-05-16-000001)

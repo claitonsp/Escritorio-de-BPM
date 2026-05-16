@@ -95,7 +95,7 @@ while ((lm = laneRe.exec(xml)) !== null) {
 
 // ─── 2. EXTRAÇÃO DE NÓS ─────────────────────────────────────────────────────
 const nodes = {};  // id → { id, type, name }
-const nodeTagRe = /<(startEvent|endEvent|userTask|serviceTask|manualTask|scriptTask|receiveTask|sendTask|callActivity|subProcess|exclusiveGateway|parallelGateway|inclusiveGateway|eventBasedGateway|complexGateway|boundaryEvent|intermediateCatchEvent|intermediateThrowEvent)\s([^>]*?)(?:\/>|>)/g;
+const nodeTagRe = /<(?:[\w-]+:)?(startEvent|endEvent|userTask|serviceTask|manualTask|scriptTask|receiveTask|sendTask|callActivity|subProcess|exclusiveGateway|parallelGateway|inclusiveGateway|eventBasedGateway|complexGateway|boundaryEvent|intermediateCatchEvent|intermediateThrowEvent)\s([^>]*?)(?:\/>|>)/g;
 let nm;
 while ((nm = nodeTagRe.exec(xml)) !== null) {
   const type  = nm[1];
@@ -247,11 +247,12 @@ const totalW = CONTENT_X0 + maxCol * COL_W + COL_PAD;
 
 // ─── 6. CÁLCULO DE BOUNDS POR NÓ ────────────────────────────────────────────
 function elemSize(type) {
-  if (type === 'startEvent' || type === 'endEvent' ||
-      type.includes('IntermediateCatch') || type.includes('IntermediateThrow')) {
+  const t = type.toLowerCase();
+  if (t === 'startevent' || t === 'endevent' ||
+      t.includes('intermediatecatch') || t.includes('intermediatethrow')) {
     return { w: EVENT_W, h: EVENT_W };
   }
-  if (type.includes('Gateway')) {
+  if (t.includes('gateway')) {
     return { w: GW_W, h: GW_W };
   }
   return { w: ELEM_W, h: TASK_H };
@@ -349,13 +350,27 @@ for (const f of flows) {
   let waypoints = [];
 
   if (isBack) {
-    // Back-edge: sai por baixo, passa pela calha BACK_MARGIN, entra por baixo
-    waypoints = [
-      { x: Math.round(src.x + src.w / 2), y: src.y + src.h },
-      { x: Math.round(src.x + src.w / 2), y: backEdgeY },
-      { x: Math.round(tgt.x + tgt.w / 2), y: backEdgeY },
-      { x: Math.round(tgt.x + tgt.w / 2), y: tgt.y + tgt.h }
-    ];
+    const srcLane = elemToLane[f.source];
+    const tgtLane = elemToLane[f.target];
+
+    if (srcLane && tgtLane && srcLane === tgtLane) {
+      // Loop intra-lane: retorna pelo teto da própria raia (não cruza outras lanes)
+      const localLoopY = laneY[srcLane] + 15;
+      waypoints = [
+        { x: Math.round(src.x + src.w / 2), y: src.y },
+        { x: Math.round(src.x + src.w / 2), y: localLoopY },
+        { x: Math.round(tgt.x + tgt.w / 2), y: localLoopY },
+        { x: Math.round(tgt.x + tgt.w / 2), y: tgt.y }
+      ];
+    } else {
+      // Loop cross-lane ou sem lane: calha inferior (backEdgeY)
+      waypoints = [
+        { x: Math.round(src.x + src.w / 2), y: src.y + src.h },
+        { x: Math.round(src.x + src.w / 2), y: backEdgeY },
+        { x: Math.round(tgt.x + tgt.w / 2), y: backEdgeY },
+        { x: Math.round(tgt.x + tgt.w / 2), y: tgt.y + tgt.h }
+      ];
+    }
   } else if (isMessage) {
     // Message Flow ortogonal.
     // Detecta se a extremidade é um Pool inteiro (w === totalW) ou um nó.

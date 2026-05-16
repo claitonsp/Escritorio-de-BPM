@@ -98,13 +98,28 @@ Exemplo:
 <sequenceFlow sourceRef="gw-conv-01" targetRef="ativ-05"/>
 ```
 
-### 5. Loops — Sequence Flow de retorno, nunca End Event
+### 5. Loops — Sequence Flow de retorno com controle obrigatório
 
 Quando `destino_tipo == "loop"`, gere um `<sequenceFlow>` apontando de volta para `destino_id`. Não gere End Event.
 
-End Events (`<endEvent>`) are gerados apenas quando `destino_tipo == "evento_fim"`, indicando encerramento definitivo do processo naquele caminho.
+End Events (`<endEvent>`) são gerados apenas quando `destino_tipo == "evento_fim"`, indicando encerramento definitivo do processo naquele caminho.
 
-Quando o JSON indicar loop sem definir limite de tentativas, adicione um comentário XML `<!-- LOOP SEM LIMITE — verificar regra de negócio -->` logo após o sequenceFlow de retorno. Não invente a regra; apenas sinalize para o auditor.
+**Controle de loop obrigatório:** Todo loop de retorno deve incluir um `<intermediateCatchEvent>` com `<timerEventDefinition>` entre o gateway e a atividade de destino. Use duração ISO 8601 `PT24H` como padrão quando nenhum intervalo for especificado. Isso impede loop cego em execução por BPMS.
+
+Estrutura obrigatória:
+```xml
+<intermediateCatchEvent id="timer-[gw-id]" name="Aguardar 24h">
+  <timerEventDefinition id="ted-[gw-id]">
+    <timeDuration xsi:type="tFormalExpression">PT24H</timeDuration>
+  </timerEventDefinition>
+</intermediateCatchEvent>
+<sequenceFlow id="sf-[gw-id]-timer" name="Não" sourceRef="[gw-id]" targetRef="timer-[gw-id]">
+  <conditionExpression>Não</conditionExpression>
+</sequenceFlow>
+<sequenceFlow id="sf-timer-[destino]" sourceRef="timer-[gw-id]" targetRef="[destino_id]"/>
+```
+
+Adicione também o `timer-[gw-id]` na `<lane>` correta (mesma lane do destino do loop). Se o JSON definir um intervalo explícito, use-o no lugar de `PT24H`.
 
 ### 6. Message Flows — interações com atores externos
 

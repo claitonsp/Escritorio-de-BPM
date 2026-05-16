@@ -57,6 +57,12 @@ O campo `nome_bpmn` é obrigatório em atividades, eventos e gateways. Ele é o 
 - Exemplos corretos: `"Emitir Requisição de Compra"`, `"Analisar orçamentos recebidos"`, `"Aprovar Pedido de Compra"`
 - Exemplos errados: `"Emitir Requisição de Compra (RC) com descrição do material..."` ❌
 
+**Regra de unicidade de nomes:** Se o mesmo conceito de negócio (ex: "Baixar Título") aparece em caminhos distintos com **atores diferentes** ou **naturezas de execução diferentes** (manual vs. automática), trate como duas atividades separadas e diferencie os nomes:
+- `"Baixar Título via Sistema"` (serviceTask, executada pelo sistema)
+- `"Baixar Título Manual"` (userTask, executada pelo humano)
+
+Nunca atribua o mesmo `nome_bpmn` a duas atividades com `ator_responsavel` ou `task_type` distintos. Isso cria paradoxo de responsabilidade no diagrama e impede rastreabilidade.
+
 ### Eventos (`eventos[].nome_bpmn`)
 - Evento start: **estado ou contexto que dispara o processo** — máx 4 palavras, sem verbo conjugado
   - Exemplo: `"Necessidade de aquisição identificada"`

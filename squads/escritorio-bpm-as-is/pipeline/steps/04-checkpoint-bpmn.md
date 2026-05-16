@@ -52,7 +52,21 @@ grep -oP 'sequenceFlow[^>]*targetRef="part-[^"]*"' processo-as-is.bpmn
 grep -oP 'targetRef="\K[^"]+' processo-as-is.bpmn | sort | uniq -d
 ```
 
+```bash
+# 1h. Loop sem controle — sequenceFlow de retorno sem intermediateCatchEvent (timer) antes da atividade
+# Detecta back-edges diretos de gateway para atividade sem timer intermediário.
+# Se houver conditionExpression "Não" apontando para uma userTask ou serviceTask (não para um evento),
+# é provável que o loop esteja sem controle de tempo.
+grep -oP 'sequenceFlow[^>]*targetRef="ativ-[^"]*"[^>]*>' processo-as-is.bpmn \
+  | grep -v 'intermediateCatchEvent' \
+  | grep 'conditionExpression' || echo "OK - loops com controle ou sem loop"
+# Alternativa: verificar se existe pelo menos um intermediateCatchEvent no arquivo quando há back-edge
+grep -c 'intermediateCatchEvent' processo-as-is.bpmn
+```
+
 Se qualquer verificação retornar resultado, **corrija o BPMN antes de continuar**. Não avance para o Auditor com erros.
+
+**Nota sobre 1g × 1h:** `targetRef` duplicado em 1g é loop intencional quando o segundo `sourceRef` é um `intermediateCatchEvent` (timer). Verifique 1h antes de concluir que 1g é violação.
 
 ## Passo 2 — Layout visual
 

@@ -1,0 +1,104 @@
+{
+  "processo": "Conciliação e Baixa de Títulos",
+  "atores": [
+    { "id": "ator-01", "nome": "Analista Financeiro", "tipo": "interno" },
+    { "id": "ator-02", "nome": "Cliente", "tipo": "externo" },
+    { "id": "sis-01", "nome": "Sistema Financeiro", "tipo": "sistema" }
+  ],
+  "atividades": [
+    {
+      "id": "ativ-01",
+      "nome_bpmn": "Identificar Recebimento",
+      "descricao": "Analista Financeiro identifica que o pagamento foi recebido do cliente.",
+      "ator_responsavel": "ator-01",
+      "sistema": null,
+      "task_type": "userTask"
+    },
+    {
+      "id": "ativ-02",
+      "nome_bpmn": "Realizar Conciliação",
+      "descricao": "Analista Financeiro realiza a conciliação do pagamento recebido com o título em aberto.",
+      "ator_responsavel": "ator-01",
+      "sistema": null,
+      "task_type": "userTask"
+    },
+    {
+      "id": "ativ-03",
+      "nome_bpmn": "Baixar Título",
+      "descricao": "Sistema realiza automaticamente a baixa do título após conciliação sem divergência.",
+      "ator_responsavel": "sis-01",
+      "sistema": "sis-01",
+      "task_type": "serviceTask"
+    },
+    {
+      "id": "ativ-04",
+      "nome_bpmn": "Acionar Cliente",
+      "descricao": "Analista Financeiro entra em contato com o cliente para resolver a divergência identificada na conciliação.",
+      "ator_responsavel": "ator-01",
+      "sistema": null,
+      "task_type": "userTask"
+    },
+    {
+      "id": "ativ-05",
+      "nome_bpmn": "Baixar Título",
+      "descricao": "Analista Financeiro realiza a baixa do título após resolução da divergência com o cliente.",
+      "ator_responsavel": "ator-01",
+      "sistema": null,
+      "task_type": "userTask"
+    }
+  ],
+  "eventos": [
+    {
+      "id": "ev-01",
+      "tipo": "start",
+      "nome_bpmn": "Pagamento recebido",
+      "descricao": "Evento de mensagem disparado quando o cliente realiza o pagamento."
+    },
+    {
+      "id": "ev-fim-01",
+      "tipo": "end",
+      "nome_bpmn": "Título baixado",
+      "descricao": "Processo encerrado após baixa automática pelo sistema."
+    },
+    {
+      "id": "ev-fim-02",
+      "tipo": "end",
+      "nome_bpmn": "Título baixado",
+      "descricao": "Processo encerrado após resolução de divergência e baixa pelo Analista Financeiro."
+    }
+  ],
+  "gateways": [
+    {
+      "id": "gw-01",
+      "tipo": "exclusive",
+      "nome_bpmn": "Existe divergência?",
+      "descricao": "Verifica se há divergência entre o pagamento recebido e o título esperado.",
+      "condicoes": [
+        { "label": "Não", "descricao": "Sem divergência: fluxo segue para baixa automática pelo sistema.", "destino_tipo": "atividade", "destino_id": "ativ-03" },
+        { "label": "Sim", "descricao": "Com divergência: acionar cliente para resolução.", "destino_tipo": "atividade", "destino_id": "ativ-04" }
+      ]
+    },
+    {
+      "id": "gw-02",
+      "tipo": "exclusive",
+      "nome_bpmn": "Problema foi resolvido?",
+      "descricao": "Verifica se a divergência foi resolvida após contato com o cliente.",
+      "condicoes": [
+        { "label": "Sim", "descricao": "Problema resolvido: seguir para baixa do título pelo Analista Financeiro.", "destino_tipo": "atividade", "destino_id": "ativ-05" },
+        { "label": "Não", "descricao": "Problema não resolvido: retornar ao acionamento do cliente.", "destino_tipo": "loop", "destino_id": "ativ-04" }
+      ]
+    }
+  ],
+  "sistemas": [
+    { "id": "sis-01", "nome": "Sistema Financeiro", "tipo": "outro" }
+  ],
+  "regras_de_negocio": [
+    { "id": "rn-01", "descricao": "A baixa automática ocorre apenas quando não há divergência na conciliação.", "atividade_relacionada": "ativ-03" },
+    { "id": "rn-02", "descricao": "O loop de acionamento do cliente não possui limite de tentativas definido.", "atividade_relacionada": "ativ-04" }
+  ],
+  "observacoes": [
+    "Evento de início do tipo mensagem, disparado pelo pagamento do cliente.",
+    "Loop de retrabalho sem limite de tentativas em ativ-04: verificar regra de negócio para definir critério de estouro.",
+    "Baixa automática (ativ-03) executada pelo Sistema; baixa após resolução (ativ-05) executada pelo Analista Financeiro — dois elementos distintos no diagrama."
+  ]
+}
