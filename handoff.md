@@ -1,12 +1,18 @@
 # Handoff Document — Escritório de BPM
 
-## Seu papel nesta sessão
+## Papel do Claude nesta sessão
 
-Você é o Claude rodando no Antigravity, atuando como **cérebro estratégico** do projeto. Suas atribuições: tomar decisões metodológicas, validar outputs, escrever conteúdo de skills (markdown com frontmatter YAML), explicar trade-offs técnicos, e desafiar premissas quando algo não fechar.
+Depende do ambiente em que está rodando:
 
-O **Gemini**, em sessão separada do Antigravity, atua como **construtor executor**. Suas atribuições: rodar comandos no terminal, criar arquivos com o conteúdo que você definir, executar scripts Python, navegar pelo filesystem.
+**Claude Code (VSCode):** cérebro estratégico e executor direto. Tem acesso ao terminal via bash, lê e edita arquivos, roda scripts. Não precisa delegar para o Gemini.
 
-Regra de ouro: **quando uma ação precisar acontecer no sistema, você não finge que executou. Você entrega ao usuário a instrução pronta para ele colar na aba do Gemini.**
+**Claude no Antigravity:** somente cérebro estratégico. Sem acesso ao terminal. Entrega instruções prontas para o Gemini executar.
+
+**Gemini Flash (Antigravity):** construtor executor quando o Claude está no Antigravity. Preferido para execução de tarefas longas porque tem janela de contexto generosa e custo baixo por token. O usuário usa o Gemini Pro, mas opera com o Flash para economizar contexto.
+
+Regra de ouro no Antigravity: **quando uma ação precisar acontecer no sistema, entregue a instrução pronta para o Gemini. Não finja execução.**
+
+No Claude Code: execute diretamente sem intermediários.
 
 ## Sobre o usuário
 
@@ -14,127 +20,188 @@ Dos Santos, profissional brasileiro com 12 anos em análise de processos, implan
 
 ## O que estamos construindo
 
-Um **Escritório de Processos agêntico** que automatiza consultoria BPM ponta a ponta, desde a entrevista com cliente até a entrega de fluxos BPMN AS-IS, diagnóstico de processo e fluxo TO-BE com plano de implantação.
+Um **Escritório de Processos agêntico** que automatiza consultoria BPM ponta a ponta. O objetivo final: o analista grava a reunião de mapeamento no Telegram, o sistema transcreve, elicita, modela e entrega um BPMN AS-IS versionado pronto para importar no Bizagi.
 
-Pipeline de quatro agentes especializados:
+### Visão do sistema completo
 
-1. **Elicitador (BABOK)**: extrai entidades de uma transcrição, gerando JSON com `nome_bpmn` (curto, para o diagrama) e `descricao` (completo, para contexto). Produz `elicitacao.json`.
-2. **Modelador AS-IS (BPMN 2.0)**: traduz o JSON em XML BPMN estruturado com lanes, gateways e sequenceFlows. Produz `processo-as-is.bpmn`.
-3. **Auditor (CBOK + Lean Six Sigma + ISO 9001)**: confronta o AS-IS com frameworks de mercado, gera backlog priorizado de melhorias. Produz `diagnostico-as-is.json`.
-4. **TO-BE (Designer de Solução)**: aplica as recomendações do Auditor, gera BPMN futuro. Produz `processo-tobe.bpmn`.
+```
+Reunião de mapeamento (áudio via Telegram)
+    │
+    ▼
+Hermes Agent — pré-reunião
+  Faz perguntas de contexto: processo, empresa, sistemas, siglas
+  Salva contexto-reuniao.json
+    │
+    ▼
+Hermes Agent — transcrição
+  Recebe áudio, chama Whisper API com vocabulário de contexto
+  Salva transcricao.txt
+    │
+    ▼
+Hermes Agent — revisão
+  Analisa a transcrição, pergunta sobre trechos ambíguos via Telegram
+  Consolida transcrição final
+    │
+    ▼
+opensquad pipeline (AS-IS)
+  01-elicitador   → elicitacao.json
+  02-checkpoint
+  03-modelador    → processo-as-is.bpmn
+  bpmn-layout.js  → processo-as-is-layout.bpmn
+  04-checkpoint
+  05-auditor      → diagnostico-as-is.json
+  06-checkpoint
+    │
+    ▼
+Hermes notifica via Telegram — BPMN pronto
+Git versiona os outputs por run
+```
 
-Layout visual gerado por `bpmn-layout.js` (script Node.js local, sem dependências) após cada agente BPMN. Visualização validada no bpmn.io.
+O TO-BE é produzido manualmente a partir do diagnóstico. Não faz parte do pipeline automatizado.
 
-## Stack
+### Stack
 
-- **Framework**: opensquad (file-based, pipeline serial inline)
-- **IDE host**: Antigravity
-- **Cérebro**: Claude (essa sessão)
-- **Construtor**: Gemini (sessão separada no Antigravity)
+- **Pipeline BPM**: opensquad (file-based, serial)
+- **Intake de áudio e Telegram**: Hermes Agent
+- **Orquestração de times** (fase futura, quando houver múltiplos analistas): Paperclip
+- **IDE host**: Antigravity ou Claude Code (VSCode)
 - **Pasta do projeto**: `C:\Users\Claiton\Documents\Escritorio-de-BPM`
-- **Repositório**: GitHub (branch main, push requer PAT do usuário)
+- **Repositório**: GitHub (branch main)
 - **Node**: v24.13.1
+- **Python**: 3.14.3
+- **Implantação**: local primeiro, VPS após pipeline validado
 
 ## Estado atual do projeto (2026-05-16)
 
-### Run de validação: `output/2026-05-16-000001/v1/`
+### Pipeline AS-IS — estável
 
-Pipeline AS-IS executado com a mesma transcrição (Camila Evers, YouTube — Processo de Compras) para validar todas as regras atualizadas nos prompts:
+Run de validação `output/2026-05-16-000001/v1/` com transcrição Camila Evers (Processo de Compras):
 
 ```
 ✅ Step 01 — Elicitador       → elicitacao.json (14 ativ, 7 gw, 6 atores, 1 ERP)
 ✅ Step 02 — Checkpoint       → aprovado
 ✅ Step 03 — Modelador        → processo-as-is.bpmn
 ✅ bpmn-layout.js             → processo-as-is-layout.bpmn
-✅ Step 04 — Checkpoint BPMN  → aprovado (2 correções automáticas detectadas pelo grep)
-✅ Step 05 — Auditor          → diagnostico-as-is.json (5 achados: 1 alta, 3 média, 1 baixa)
+✅ Step 04 — Checkpoint BPMN  → aprovado (2 correções automáticas)
+✅ Step 05 — Auditor          → diagnostico-as-is.json (5 achados)
 ✅ Step 06 — Checkpoint Audit → aprovado
 ```
 
-O TO-BE é produzido manualmente a partir do diagnóstico. Não faz parte do pipeline automatizado.
+### Bugs encontrados no BPMN para Bizagi (pendentes de correção)
 
-### O que foi validado nesta run
+O bpmn.io abre sem erro. O Bizagi rejeita pelos bugs abaixo:
 
-- `nome_bpmn` curto gerado corretamente pelo Elicitador (máx 4 palavras)
-- `condicoes` estruturadas com `label`, `destino_tipo` e `destino_id`
-- Fornecedor como Pool Black Box — zero Lane vazia
-- Todos os gateways com `name="Sim"` / `name="Não"` nas saídas
-- Loops modelados como Sequence Flow de retorno (sem End Event)
-- Checkpoint detectou automaticamente `serviceTask` incorretos em ativ-01 e ativ-07
-- `bpmn-layout.js` renderizou corretamente no bpmn.io
+**Bug 1 — BPMNPlane aponta para o processo em vez da colaboração (bloqueante)**
+```xml
+<!-- atual (errado) -->
+<bpmndi:BPMNPlane bpmnElement="proc_as_is">
+<!-- correto -->
+<bpmndi:BPMNPlane bpmnElement="collab_01">
+```
 
-### Achados do Auditor (run 2026-05-16-000001)
+**Bug 2 — Pool shape referencia ID inexistente**
+O shape usa `bpmnElement="pool_proc_as_is"` mas o participant tem `id="part-empresa"`. IDs não casam.
 
-- **ach-01** (Lean, Media): bloqueio aguardando 3 orçamentos — catálogo de preços para compras recorrentes
-- **ach-02** (Lean, Media): confirmação de recebimento do PC manual — automatizar via portal/EDI
-- **ach-03** (CBOK, Baixa): 5 atores internos gerando handoffs — avaliar unificação ou automação
-- **ach-04** (ISO9001, Alta): Plano B encerra processo sem resolução — criar sub-fluxo de contingência
-- **ach-05** (CBOK, Media): critérios subjetivos na análise da RC — check-list técnico obrigatório
+**Bug 3 — Nenhum BPMNShape para o Pool Fornecedor**
+`<participant id="part-ator-03" name="Fornecedor">` existe no modelo mas não tem shape no BPMNDiagram. Bizagi rejeita pools sem representação visual.
 
-### Run anterior: `output/2026-05-15-000002/v1/`
+Correção deve ser feita no `bpmn-layout.js` e validada com import no Bizagi.
 
-Run completa (AS-IS + Auditoria + TO-BE) executada antes das atualizações de prompt. Serviu como baseline. TO-BE desta run tem Fornecedor ainda como Lane vazia e nomes longos nos elementos.
+### Próxima ação: instalar Hermes localmente
+
+Antes de subir para VPS, o fluxo completo será validado local.
+
+Checklist de instalação (próxima sessão):
+
+**Fase 1 — Pré-requisitos**
+- [ ] Instalar ffmpeg via winget (necessário para Whisper processar áudio)
+- [ ] Separar API key: Anthropic para Hermes, OpenAI para Whisper
+
+**Fase 2 — Hermes**
+- [ ] `pip install hermes-agent`
+- [ ] `hermes postinstall`
+- [ ] `hermes setup` (configurar provider e API key)
+- [ ] `hermes --tui` (confirmar funcionamento)
+
+**Fase 3 — Gateway Telegram**
+- [ ] Criar bot no BotFather e guardar token
+- [ ] `hermes gateway setup` (configurar Telegram)
+- [ ] Testar mensagem de texto e mensagem de voz
+
+**Fase 4 — Skills BPM**
+- [ ] Skill `bpm-pre-reuniao`: coleta contexto antes da reunião
+- [ ] Skill `bpm-transcricao`: Whisper com vocabulário de contexto
+- [ ] Skill `bpm-revisao`: perguntas de clarificação pós-transcrição
+- [ ] Skill `bpm-pipeline`: dispara opensquad e notifica quando pronto
+
+**Fase 5 — Correção Bizagi**
+- [ ] Corrigir os 3 bugs no `bpmn-layout.js`
+- [ ] Validar import no Bizagi
+
+**Fase 6 — Teste ponta a ponta (local)**
+- [ ] Gravar reunião simulada, enviar pelo Telegram, receber BPMN
+
+**Fase 7 — Subir para VPS**
+- [ ] Somente após fase 6 validada
 
 ## Arquitetura dos agentes (estado atual dos prompts)
 
-### `01-elicitador.md` — ATUALIZADO nesta sessão
+### `01-elicitador.md`
 
-Campo `nome_bpmn` adicionado ao schema de saída para atividades, eventos e gateways. O agente gera o rótulo curto diretamente, seguindo:
+Campo `nome_bpmn` gerado diretamente pelo agente:
 - Atividades: Verbo Infinitivo + Objeto, máx 4 palavras
 - Eventos start: estado que dispara, máx 4 palavras
 - Eventos end: estado resultante, máx 3 palavras
 - Gateways: pergunta com "?", máx 6 palavras
 
-Campo `condicoes` dos gateways agora tem estrutura explícita:
+Campo `condicoes` com estrutura explícita:
 ```json
 { "label": "Sim", "descricao": "...", "destino_tipo": "atividade | evento_fim | loop", "destino_id": "ativ-XX" }
 ```
-`destino_tipo: "loop"` → Modelador gera Sequence Flow de retorno, não End Event.
+`destino_tipo: "loop"` gera Sequence Flow de retorno, nunca End Event.
 
-Regra de ator externo documentada: Fornecedor, cliente, banco = `"externo"` → Pool Black Box.
+Ator externo: `"tipo": "externo"` gera Pool Black Box. Nunca Lane.
 
-### `03-modelador.md` — ATUALIZADO nesta sessão
+### `03-modelador.md`
 
-Regras adicionadas:
-1. **Externo → Pool Black Box**: `tipo: "externo"` gera `<collaboration>` + `<participant isExecutable="false">` + `<messageFlow>`. Nunca Lane.
-2. **Lane vazia proibida**: só cria lane se tiver `<flowNodeRef>`.
-3. **`name=` usa `nome_bpmn`**: nunca o campo `descricao`.
-4. **Gateway com Sim/Não obrigatório**: todos os `<sequenceFlow>` saindo de gateway têm `name="Sim"` ou `name="Não"`.
-5. **Loop = Sequence Flow de retorno**: `destino_tipo: "loop"` → nunca End Event.
+1. Externo → Pool Black Box com `<collaboration>` + `<messageFlow>`
+2. Lane vazia proibida
+3. `name=` usa `nome_bpmn`, nunca `descricao`
+4. Todas as saídas de gateway têm `name="Sim"` ou `name="Não"`
+5. Loop = Sequence Flow de retorno, nunca End Event
 
-### `07-tobe.md` — REESCRITO nesta sessão
+### `07-tobe.md`
 
-Era hardcoded para um processo específico antigo. Agora é genérico com as mesmas regras do Modelador (nomenclatura, Black Box, lanes vazias, Sim/Não nos gateways, loops).
+Reescrito genérico com as mesmas regras do Modelador.
 
-### `04-checkpoint-bpmn.md` — ATUALIZADO nesta sessão
+### `04-checkpoint-bpmn.md`
 
-Agora tem validação automática obrigatória com 5 `grep` que bloqueiam avanço se:
-- Qualquer `name=` tiver mais de 50 caracteres
-- Qualquer gateway tiver saída sem `name=`
-- Lane contiver "Fornecedor", "cliente" ou "transportadora"
+Validação automática com grep bloqueia se:
+- `name=` com mais de 50 caracteres
+- Gateway com saída sem `name=`
+- Lane com nome de ator externo (Fornecedor, cliente, transportadora)
 
-### `08-checkpoint-tobe.md` — ATUALIZADO nesta sessão
+### `08-checkpoint-tobe.md`
 
-Mesma validação automática adaptada para o TO-BE, incluindo verificação se achados de prioridade alta foram implementados.
+Mesma validação do checkpoint BPMN adaptada para TO-BE, incluindo verificação de achados de prioridade alta.
 
-## bpmn-layout.js — estado atual
+## bpmn-layout.js
 
-Arquivo em `squads/escritorio-bpm-as-is/scripts/bpmn-layout.js`. Script Node.js sem dependências.
+Arquivo: `squads/escritorio-bpm-as-is/scripts/bpmn-layout.js`
 
-Uso:
 ```bash
 node squads/escritorio-bpm-as-is/scripts/bpmn-layout.js <input.bpmn> <output.bpmn>
 ```
 
-Algoritmo: regex parse → extração de lanes/nós/flows → Kahn topological sort → longest-path column assignment → BPMNShape + BPMNEdge → injeção no BPMNDiagram.
+Algoritmo: regex parse, extração de lanes/nós/flows, Kahn topological sort, longest-path column assignment, BPMNShape + BPMNEdge, injeção no BPMNDiagram.
 
-Constantes principais: `POOL_LABEL_W=30`, `LANE_LABEL_W=120`, `LANE_H=120`, `COL_W=180`, `ELEM_W=120`, `TASK_H=60`, `EVENT_W=36`, `GW_W=50`.
+Constantes: `POOL_LABEL_W=30`, `LANE_LABEL_W=120`, `LANE_H=120`, `COL_W=180`, `ELEM_W=120`, `TASK_H=60`, `EVENT_W=36`, `GW_W=50`.
 
-Limitação conhecida: back-edges (loops) são roteados abaixo das lanes (y=960), criando linhas longas. Não bloqueante para uso atual.
+Limitação conhecida: back-edges (loops) roteados abaixo das lanes (y=960). Não bloqueante.
+
+Pendência: corrigir os 3 bugs de compatibilidade com Bizagi descritos acima.
 
 ## Status das regras BPMN
-
-Todas as regras abaixo foram validadas na run 2026-05-16-000001:
 
 | Regra | Status |
 |---|---|
@@ -145,21 +212,26 @@ Todas as regras abaixo foram validadas na run 2026-05-16-000001:
 | Lane vazia proibida | Validado |
 | Checkpoint detecta serviceTask incorreto | Validado |
 | Message Flows para atores externos | Validado |
+| BPMNPlane referencia collaboration | Pendente (bug Bizagi) |
+| Pool shape com ID correto | Pendente (bug Bizagi) |
+| BPMNShape para Pool Fornecedor | Pendente (bug Bizagi) |
 
-## Próxima ação recomendada
+## Achados do Auditor (run 2026-05-16-000001)
 
-O pipeline AS-IS está estável. Para uma nova run, basta colocar a transcrição em `squads/escritorio-bpm-as-is/input/` e seguir os steps do pipeline.
-
-O TO-BE é produzido manualmente pelo analista a partir do `diagnostico-as-is.json`.
+- **ach-01** (Lean, Media): bloqueio aguardando 3 orçamentos — catálogo de preços para compras recorrentes
+- **ach-02** (Lean, Media): confirmação de recebimento do PC manual — automatizar via portal/EDI
+- **ach-03** (CBOK, Baixa): 5 atores internos gerando handoffs — avaliar unificação ou automação
+- **ach-04** (ISO9001, Alta): Plano B encerra processo sem resolução — criar sub-fluxo de contingência
+- **ach-05** (CBOK, Media): critérios subjetivos na análise da RC — check-list técnico obrigatório
 
 ## Regras de estilo invioláveis
 
-- **Sem traços longos (em-dash, U+2014)**. Usar vírgulas ou reformular a frase.
-- **Conteúdo grounded em experiência documentada**. NUNCA inventar métricas, projetos fictícios ou dados de clientes.
-- **Português brasileiro** como padrão.
-- **Tom direto e crítico**, com autoridade quando apropriado (ABPMP, OMG, BPM CBOK v4.0, BABOK v3).
+- Sem traços longos (em-dash, U+2014). Usar vírgulas ou reformular.
+- Conteúdo grounded em experiência documentada. NUNCA inventar métricas ou dados de clientes.
+- Português brasileiro.
+- Tom direto e crítico, com autoridade (ABPMP, OMG, BPM CBOK v4.0, BABOK v3).
 - Evitar formatação excessiva. Prosa quando der.
 
 ## Confirmação esperada antes de qualquer ação
 
-Antes de executar qualquer coisa ou delegar para o Gemini, responda em 5 a 8 linhas com sua interpretação do que leu, para o usuário validar que você entendeu sem alucinar. Se algo estiver ambíguo ou faltar contexto, pergunte. Não presuma.
+Antes de executar ou delegar, responda em 5 a 8 linhas com sua interpretação do que leu, para o usuário validar. Se algo estiver ambíguo, pergunte. Não presuma.
