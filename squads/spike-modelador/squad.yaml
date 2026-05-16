@@ -1,0 +1,9 @@
+code: spike-modelador
+name: Spike 4 — Modelador AS-IS
+icon: 🗺️
+agents:
+  - modelador
+pipeline:
+  steps:
+    - 01-modelador
+    - 02-checkpoint

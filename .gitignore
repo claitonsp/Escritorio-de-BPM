@@ -2,3 +2,5 @@ node_modules/
 .env
 _opensquad/_browser_profile/
 *.log
+.vscode/
+scratch/
