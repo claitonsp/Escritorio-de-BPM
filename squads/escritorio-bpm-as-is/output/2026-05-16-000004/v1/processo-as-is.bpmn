@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://escritorio-bpm/as-is"
+             id="definitions_as_is">
+
+  <collaboration id="collab_01">
+    <participant id="part-empresa" name="Empresa" processRef="proc_as_is"/>
+    <participant id="part-cliente" name="Cliente" isExecutable="false"/>
+    <messageFlow id="mf-partcliente-ev01" sourceRef="part-cliente" targetRef="ev-01"/>
+    <messageFlow id="mf-ativ03-partcliente" sourceRef="ativ-03" targetRef="part-cliente"/>
+  </collaboration>
+
+  <process id="proc_as_is" name="Conciliação e Baixa de Títulos" isExecutable="false">
+    <laneSet id="ls_01">
+      <lane id="lane-analista" name="Analista Financeiro">
+        <flowNodeRef>ev-01</flowNodeRef>
+        <flowNodeRef>ativ-01</flowNodeRef>
+        <flowNodeRef>ativ-02</flowNodeRef>
+        <flowNodeRef>gw-01</flowNodeRef>
+        <flowNodeRef>ativ-03</flowNodeRef>
+        <flowNodeRef>ativ-04</flowNodeRef>
+        <flowNodeRef>gw-02</flowNodeRef>
+        <flowNodeRef>timer-gw02</flowNodeRef>
+        <flowNodeRef>ativ-05</flowNodeRef>
+        <flowNodeRef>ev-02</flowNodeRef>
+        <flowNodeRef>ev-03</flowNodeRef>
+      </lane>
+    </laneSet>
+
+    <!-- Evento de início (mensagem do cliente) -->
+    <startEvent id="ev-01" name="Pagamento recebido">
+      <messageEventDefinition id="med-ev01"/>
+    </startEvent>
+
+    <!-- Atividades principais -->
+    <userTask id="ativ-01" name="Identificar Recebimento"/>
+    <userTask id="ativ-02" name="Realizar Conciliação"/>
+    <userTask id="ativ-03" name="Acionar Cliente"/>
+    <serviceTask id="ativ-04" name="Baixar Título via Sistema"/>
+    <userTask id="ativ-05" name="Baixar Título Manual"/>
+
+    <!-- Gateways -->
+    <exclusiveGateway id="gw-01" name="Existe divergência?"/>
+    <exclusiveGateway id="gw-02" name="Problema foi resolvido?"/>
+
+    <!-- Timer intermediário: controle de loop (PT24H) -->
+    <intermediateCatchEvent id="timer-gw02" name="Aguardar 24h">
+      <timerEventDefinition id="ted-gw02">
+        <timeDuration xsi:type="tFormalExpression">PT24H</timeDuration>
+      </timerEventDefinition>
+    </intermediateCatchEvent>
+
+    <!-- Eventos de fim -->
+    <endEvent id="ev-02" name="Título baixado"/>
+    <endEvent id="ev-03" name="Título baixado"/>
+
+    <!-- Sequência principal -->
+    <sequenceFlow id="sf-ev01-ativ01" sourceRef="ev-01" targetRef="ativ-01"/>
+    <sequenceFlow id="sf-ativ01-ativ02" sourceRef="ativ-01" targetRef="ativ-02"/>
+    <sequenceFlow id="sf-ativ02-gw01" sourceRef="ativ-02" targetRef="gw-01"/>
+
+    <!-- Saídas do gw-01 -->
+    <sequenceFlow id="sf-gw01-ativ04" name="Não" sourceRef="gw-01" targetRef="ativ-04">
+      <conditionExpression>Não</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw01-ativ03" name="Sim" sourceRef="gw-01" targetRef="ativ-03">
+      <conditionExpression>Sim</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Caminho sem divergência -->
+    <sequenceFlow id="sf-ativ04-ev02" sourceRef="ativ-04" targetRef="ev-02"/>
+
+    <!-- Caminho com divergência: após acionar cliente, sempre aguarda 24h antes de verificar -->
+    <sequenceFlow id="sf-ativ03-timer" sourceRef="ativ-03" targetRef="timer-gw02"/>
+    <sequenceFlow id="sf-timer-gw02" sourceRef="timer-gw02" targetRef="gw-02"/>
+
+    <!-- Saídas do gw-02 -->
+    <sequenceFlow id="sf-gw02-ativ05" name="Sim" sourceRef="gw-02" targetRef="ativ-05">
+      <conditionExpression>Sim</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sf-gw02-ativ03" name="Não" sourceRef="gw-02" targetRef="ativ-03">
+      <conditionExpression>Não</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Caminho final após resolução -->
+    <sequenceFlow id="sf-ativ05-ev03" sourceRef="ativ-05" targetRef="ev-03"/>
+
+  </process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="collab_01">
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>

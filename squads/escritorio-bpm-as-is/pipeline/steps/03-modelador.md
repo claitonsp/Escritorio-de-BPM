@@ -104,22 +104,48 @@ Quando `destino_tipo == "loop"`, gere um `<sequenceFlow>` apontando de volta par
 
 End Events (`<endEvent>`) são gerados apenas quando `destino_tipo == "evento_fim"`, indicando encerramento definitivo do processo naquele caminho.
 
-**Controle de loop obrigatório:** Todo loop de retorno deve incluir um `<intermediateCatchEvent>` com `<timerEventDefinition>` entre o gateway e a atividade de destino. Use duração ISO 8601 `PT24H` como padrão quando nenhum intervalo for especificado. Isso impede loop cego em execução por BPMS.
+**Controle de loop obrigatório:** Todo loop de retorno deve incluir um `<intermediateCatchEvent>` com `<timerEventDefinition>`. O timer é um **passo sequencial ANTES do gateway de decisão**, não uma branch do "Não". Isso garante que a espera ocorra antes da verificação, e não após a decisão negativa.
+
+**Padrão correto — timer ANTES do gateway:**
+
+```
+[atividade-de-ação] → [timer] → [gateway-de-decisão] → Sim → [próxima atividade]
+                                                       ↑          Não → (back-edge para atividade-de-ação)
+```
 
 Estrutura obrigatória:
 ```xml
+<!-- Timer como passo sequencial entre a atividade de ação e o gateway -->
 <intermediateCatchEvent id="timer-[gw-id]" name="Aguardar 24h">
   <timerEventDefinition id="ted-[gw-id]">
     <timeDuration xsi:type="tFormalExpression">PT24H</timeDuration>
   </timerEventDefinition>
 </intermediateCatchEvent>
-<sequenceFlow id="sf-[gw-id]-timer" name="Não" sourceRef="[gw-id]" targetRef="timer-[gw-id]">
+<sequenceFlow id="sf-[ativ-acao]-timer" sourceRef="[ativ-acao-id]" targetRef="timer-[gw-id]"/>
+<sequenceFlow id="sf-timer-[gw-id]" sourceRef="timer-[gw-id]" targetRef="[gw-id]"/>
+
+<!-- Gateway de decisão: "Sim" avança, "Não" retorna à atividade de ação (back-edge) -->
+<sequenceFlow id="sf-[gw-id]-[destino-sim]" name="Sim" sourceRef="[gw-id]" targetRef="[destino-sim-id]">
+  <conditionExpression>Sim</conditionExpression>
+</sequenceFlow>
+<sequenceFlow id="sf-[gw-id]-[ativ-acao]" name="Não" sourceRef="[gw-id]" targetRef="[ativ-acao-id]">
   <conditionExpression>Não</conditionExpression>
 </sequenceFlow>
-<sequenceFlow id="sf-timer-[destino]" sourceRef="timer-[gw-id]" targetRef="[destino_id]"/>
 ```
 
-Adicione também o `timer-[gw-id]` na `<lane>` correta (mesma lane do destino do loop). Se o JSON definir um intervalo explícito, use-o no lugar de `PT24H`.
+**Erro crítico a evitar:**
+```xml
+<!-- ERRADO — timer na branch "Não" do gateway: loop cego e layout quebrado -->
+<sequenceFlow name="Não" sourceRef="[gw-id]" targetRef="timer-[gw-id]"/>
+<sequenceFlow sourceRef="timer-[gw-id]" targetRef="[ativ-acao-id]"/>
+
+<!-- CORRETO — timer antes do gateway, "Não" retorna diretamente à atividade -->
+<sequenceFlow sourceRef="[ativ-acao-id]" targetRef="timer-[gw-id]"/>
+<sequenceFlow sourceRef="timer-[gw-id]" targetRef="[gw-id]"/>
+<sequenceFlow name="Não" sourceRef="[gw-id]" targetRef="[ativ-acao-id]"/>
+```
+
+Adicione o `timer-[gw-id]` na `<lane>` correta (mesma lane da atividade de ação). Se o JSON definir um intervalo explícito, use-o no lugar de `PT24H`.
 
 ### 6. Message Flows — interações com atores externos
 
@@ -157,7 +183,35 @@ Derive a sequência seguindo estas regras em ordem de prioridade:
 4. Handoff entre atores indica sequência (atividade do ator A → atividade do ator B)
 5. Toda atividade que não possui nenhum `<sequenceFlow>` de saída definido no JSON (não é origem de nenhuma seta, não tem gateway subsequente) DEVE ser seguida imediatamente por um `<endEvent>`. Gere: `<endEvent id="ev-fim-[ativ-id]" name="[nome curto do estado final]"/>` e conecte com um `<sequenceFlow>`. Nunca deixe uma atividade sem saída — um token preso é um processo zumbi.
 
-### 9. Proibições absolutas
+### 9. Ordenação semântica de sequenceFlows em gateways (prevenção de colisões visuais)
+
+O motor de layout usa DFS para calcular a posição vertical (row) dos nós. A ordem em que os `<sequenceFlow>` de saída são declarados no XML determina qual nó o DFS visita primeiro — e, portanto, qual recebe `row = 0` (topo da célula).
+
+**Regra obrigatória:** Ao declarar os `<sequenceFlow>` de saída de um `<exclusiveGateway>`, coloque **primeiro** o fluxo que leva à atividade que possui `<messageFlow>` com pool externo (comunicação com cliente/fornecedor). Coloque **depois** os fluxos que levam a atividades puramente internas (automações sistêmicas, tarefas sem comunicação externa).
+
+```xml
+<!-- CORRETO — "Acionar Cliente" (tem messageFlow) declarado ANTES de "Baixar Título" (interno) -->
+<sequenceFlow id="sf-gw01-ativ03" name="Sim" sourceRef="gw-01" targetRef="ativ-03">
+  <conditionExpression>Sim</conditionExpression>
+</sequenceFlow>
+<sequenceFlow id="sf-gw01-ativ04" name="Não" sourceRef="gw-01" targetRef="ativ-04">
+  <conditionExpression>Não</conditionExpression>
+</sequenceFlow>
+
+<!-- ERRADO — "Baixar Título" (interno) declarado primeiro → DFS coloca no topo →
+     "Acionar Cliente" fica abaixo e seu messageFlow cruza "Baixar Título" -->
+<sequenceFlow id="sf-gw01-ativ04" name="Não" sourceRef="gw-01" targetRef="ativ-04">...</sequenceFlow>
+<sequenceFlow id="sf-gw01-ativ03" name="Sim" sourceRef="gw-01" targetRef="ativ-03">...</sequenceFlow>
+```
+
+**Critério de prioridade para ordenação:**
+1. Fluxo com destino em atividade que tem `<messageFlow>` → declare primeiro
+2. Fluxo com destino em atividade puramente interna → declare depois
+3. Entre atividades do mesmo tipo: mantenha a ordem lógica do processo (Sim antes de Não quando Sim é o caminho principal)
+
+> **Nota:** O motor de layout aplica adicionalmente um algoritmo de Atração de Borda (Border Magnetism) que corrige automaticamente a posição mesmo que a ordem XML esteja errada. Esta regra XML é uma camada de segurança adicional para processos muito complexos.
+
+### 10. Proibições absolutas
 
 - Não crie Lane para ator externo
 - Não crie Lane vazia
@@ -169,7 +223,7 @@ Derive a sequência seguindo estas regras em ordem de prioridade:
 - Não deixe múltiplas setas chegando em uma mesma tarefa sem um gateway convergente antes dela (convergência implícita). Se um gateway divergente abre caminhos alternativos, feche-os com um segundo `<exclusiveGateway>` vazio antes da próxima tarefa comum
 - Não modele "Plano B acionado" ou equivalentes como `<userTask>`. Estado no particípio passado sem ação subsequente definida é sempre um `<endEvent>`, nunca uma tarefa
 
-### 10. IDs
+### 11. IDs
 
 Use os IDs do JSON (ativ-01, gw-01, ev-01, etc.). Para sequenceFlows: `sf-{origem}-{destino}`. Para messageFlows: `mf-{origem}-{destino}`.
 

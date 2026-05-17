@@ -7,11 +7,20 @@
 // Algoritmo:
 //   1. Parse do XML via regex (sem dependências externas)
 //   2. Detecção de lanes e mapeamento elemento → lane
-//   3. Ordenação topológica com longest-path (coluna = profundidade máxima)
-//   4. Detecção de back-edges (ciclos) — roteados abaixo do diagrama
+//   3. DFS iterativo com pilha explícita → ordem topológica + back-edges (ciclos)
+//      [Kahn's foi descartado: não resolve grafos com ciclos de negócio — nós do
+//       ciclo ficavam presos com inDeg>0 e eram inseridos em posição arbitrária,
+//       corrompendo o longest-path e gerando setas que atravessavam o diagrama]
+//   4. Longest-path no DAG (ignorando back-edges) → coluna = profundidade máxima
 //   5. Geração de BPMNShape para pool, lanes e nós
-//   6. Geração de BPMNEdge com waypoints em cotovelo (L-shape) para cross-lane
-//      e linha reta para same-lane; back-edges roteados por baixo
+//   6. Roteamento Port-Aware com separação de corredores:
+//      - Back-edge intra-lane Row 1 : PISO da raia (laneY + laneH - 15) → sai/entra pelo fundo
+//      - Back-edge intra-lane Row 0 : TETO da raia (laneY + 15) → sai/entra pelo topo
+//      - Back-edge cross-lane       : calha inferior global (backEdgeY)
+//      - MessageFlow                : calha lateral (gutter) da coluna de origem
+//      - SequenceFlow mesmo Y       : horizontal direta (direita → esquerda)
+//      - SequenceFlow descendo      : sai pelo fundo, L via srcMidX, entra na esquerda
+//      - SequenceFlow subindo       : sai pelo topo, L via srcMidX, entra na esquerda
 
 'use strict';
 const fs = require('fs');
@@ -27,14 +36,21 @@ const xml = fs.readFileSync(inputFile, 'utf8');
 // ─── CONSTANTES DE LAYOUT ───────────────────────────────────────────────────
 const POOL_LABEL_W   = 30;   // largura do rótulo vertical do pool
 const LANE_LABEL_W   = 120;  // largura do rótulo da lane
-const LANE_H         = 120;  // altura de cada swimlane
+const LANE_H         = 120;  // altura mínima de cada swimlane
 const COL_W          = 180;  // largura de cada coluna
-const COL_PAD        = 20;   // padding horizontal entre colunas
+const COL_PAD        = 40;   // padding horizontal entre colunas
 const ELEM_W         = 120;  // largura padrão de tarefas/eventos/gateways
 const TASK_H         = 60;
 const EVENT_W        = 36;
 const GW_W           = 50;
 const BACK_MARGIN    = 40;   // espaço abaixo das lanes para back-edges
+// ── Gutters de raia: corredores livres para loops e message flows ─────────────
+// TOP_GUTTER garante 30px acima de todos os elementos → loop pode passar em y=15
+// BOTTOM_GUTTER garante 30px abaixo → seta de descida tem espaço antes da calha inferior
+// ROW_PAD é o espaço vertical entre linhas de elementos na mesma lane
+const TOP_GUTTER     = 30;
+const BOTTOM_GUTTER  = 30;
+const ROW_PAD        = 20;
 const CONTENT_X0     = POOL_LABEL_W + LANE_LABEL_W; // x onde começam as colunas
 
 // ─── HELPERS DE PARSE ───────────────────────────────────────────────────────
@@ -145,83 +161,124 @@ if (crossPoolFlows.length > 0) {
   console.warn(`  Estes fluxos serão ignorados no layout. Corrija o modelo no 03-modelador.\n`);
 }
 
-// ─── 4. TOPOLOGICAL SORT + LONGEST-PATH (coluna) ────────────────────────────
-// Construção do grafo de adjacência (apenas para sequence flows)
-const adj  = {};   // id → [id, ...]  (forward edges)
-const radj = {};   // id → [id, ...]  (reverse edges)
-for (const id of Object.keys(nodes)) { adj[id] = []; radj[id] = []; }
+// ─── 4. TOPOLOGICAL SORT (DFS iterativo) + LONGEST-PATH ─────────────────────
+const adj = {};
+for (const id of Object.keys(nodes)) adj[id] = [];
 for (const f of flows) {
-  if (f.type !== 'sequence') continue;
-  if (adj[f.source])  adj[f.source].push(f.target);
-  if (radj[f.target]) radj[f.target].push(f.source);
+  if (f.type === 'sequence') adj[f.source].push({ target: f.target, flowId: f.id });
 }
 
-// Kahn's algorithm para detectar back-edges e obter topological order
+// DFS iterativo com detecção de back-edges (estado por nó: 0=novo 1=na pilha 2=concluído)
+const state = {};
+for (const id of Object.keys(nodes)) state[id] = 0;
+const backEdgeSet = new Set();
+const topoOrder   = [];
+
+// Acha nós de entrada para iniciar a DFS
 const inDeg = {};
 for (const id of Object.keys(nodes)) inDeg[id] = 0;
-for (const f of flows) { 
-  if (f.type === 'sequence' && inDeg[f.target] !== undefined) inDeg[f.target]++; 
+for (const f of flows) {
+  if (f.type === 'sequence' && inDeg[f.target] !== undefined) inDeg[f.target]++;
 }
+const startNodes = Object.keys(nodes).filter(id => inDeg[id] === 0);
+const allNodes   = [...startNodes, ...Object.keys(nodes).filter(id => inDeg[id] > 0)];
 
-const queue = Object.keys(nodes).filter(id => inDeg[id] === 0);
-const topoOrder = [];
-const visited = new Set();
-while (queue.length > 0) {
-  const cur = queue.shift();
-  if (visited.has(cur)) continue;
-  visited.add(cur);
-  topoOrder.push(cur);
-  for (const nxt of adj[cur]) {
-    if (!visited.has(nxt)) {
-      inDeg[nxt]--;
-      if (inDeg[nxt] <= 0) queue.push(nxt);
+for (const root of allNodes) {
+  if (state[root] !== 0) continue;
+
+  // Pilha explícita: cada frame guarda [nodeId, índice do próximo filho a processar]
+  const stack = [[root, 0]];
+  state[root] = 1;
+
+  while (stack.length > 0) {
+    const frame = stack[stack.length - 1];
+    const [u, idx] = frame;
+
+    if (idx < adj[u].length) {
+      frame[1]++;                    // avança o cursor do frame
+      const { target: v, flowId } = adj[u][idx];
+
+      if (state[v] === 1) {
+        backEdgeSet.add(flowId);     // aresta de retorno = back-edge (ciclo)
+      } else if (state[v] === 0) {
+        state[v] = 1;
+        stack.push([v, 0]);
+      }
+    } else {
+      stack.pop();
+      state[u] = 2;
+      topoOrder.push(u);            // push + reverse no fim = O(n), não O(n²)
     }
   }
 }
-// Nós não alcançados (ciclos) → adicionar no fim
-for (const id of Object.keys(nodes)) {
-  if (!visited.has(id)) topoOrder.push(id);
-}
+topoOrder.reverse();
 
-// Detecção de back-edges: uma aresta (u→v) é back-edge se v aparece antes de u na ordem topo
-const topoPos = {};
-topoOrder.forEach((id, i) => topoPos[id] = i);
-const backEdgeSet = new Set(); // flowId
-for (const f of flows) {
-  if (f.type === 'sequence' && (topoPos[f.source] ?? 0) >= (topoPos[f.target] ?? 0)) {
-    backEdgeSet.add(f.id);
-  }
-}
-
-// Longest-path em DAG (ignorando back-edges) → determina coluna de cada nó
+// Longest-path no DAG ignorando back-edges → coluna de cada nó
 const col = {};
 for (const id of Object.keys(nodes)) col[id] = 0;
 for (const id of topoOrder) {
-  for (const f of flows) {
-    if (f.type !== 'sequence' || f.source !== id) continue;
-    if (backEdgeSet.has(f.id)) continue;
-    if ((col[f.target] ?? 0) <= col[id]) {
-      col[f.target] = col[id] + 1;
-    }
+  for (const { target: v, flowId } of adj[id]) {
+    if (backEdgeSet.has(flowId)) continue;
+    if ((col[v] ?? 0) <= col[id]) col[v] = col[id] + 1;
   }
 }
 
-// ─── 5. ASSIGNMENT DE LINHAS DENTRO DE CADA (lane × col) ────────────────────
-// Conta quantos elementos há por (lane, col) → row dentro da célula
-const cellCount = {};  // `${laneId}|${col}` → count
-const nodeRow   = {};  // nodeId → row dentro da célula (0-indexed)
 
+// ─── 5. ASSIGNMENT DE LINHAS COM Y-SORTING POR ATRAÇÃO DE BORDA ─────────────
+// O algoritmo padrão (ordem de chegada do DFS) é cego para quem tem MessageFlow.
+// Isso causa cruzamentos: nós puramente internos ficam no topo, e nós com
+// MessageFlow ficam embaixo — a linha de mensagem rasga os nós intermediários.
+//
+// Regra de Atração de Borda (Border Magnetism):
+//   Peso −1 → nó tem MessageFlow com pool externo → row 0 (flutua ao TOPO)
+//   Peso  0 → nó puramente interno                → rows subsequentes por DFS
+//
+// Efeito: "Acionar Cliente" (messageFlow para parte-cliente) sempre fica no topo
+// da célula; "Baixar Título via Sistema" (sem fluxo externo) fica abaixo.
+// Com o topo livre, a linha de mensagem desce pela calha sem cruzar nada.
+
+// IDs de pools externos (participants sem processRef = Black Box pools)
+const _sortParticipants = getParticipants();
+const _extPoolIds       = new Set(
+  _sortParticipants.filter(p => !p.processRef).map(p => p.id)
+);
+
+// Peso direcional: −1 se o nó se comunica (origem ou destino) com pool externo
+function _msgBorderWeight(nodeId) {
+  for (const f of flows) {
+    if (f.type !== 'message') continue;
+    if (f.source === nodeId && _extPoolIds.has(f.target)) return -1;
+    if (f.target === nodeId && _extPoolIds.has(f.source)) return -1;
+  }
+  return 0;
+}
+
+// Agrupar nós por (lane × col) em ordem topológica (garante DFS order no empate)
+const _cellGroups = {};
 for (const id of topoOrder) {
   const laneId = elemToLane[id];
   if (!laneId) continue;
-  const c = col[id] ?? 0;
+  const c   = col[id] ?? 0;
   const key = `${laneId}|${c}`;
-  const row = cellCount[key] ?? 0;
-  nodeRow[id] = row;
-  cellCount[key] = row + 1;
+  if (!_cellGroups[key]) _cellGroups[key] = [];
+  _cellGroups[key].push(id);
 }
 
-// Altura real de cada lane (min LANE_H, mas cresce se muitos elementos por célula)
+// Ordenar cada célula por peso (−1 primeiro = topo) e atribuir rows
+const cellCount = {};
+const nodeRow   = {};
+
+for (const [key, group] of Object.entries(_cellGroups)) {
+  group.sort((a, b) => _msgBorderWeight(a) - _msgBorderWeight(b));
+  group.forEach((id, i) => { nodeRow[id] = i; });
+  cellCount[key] = group.length;
+}
+
+// Altura real de cada lane com GUTTERS explícitos:
+//   laneH = TOP_GUTTER + (maxRows × TASK_H) + ((maxRows-1) × ROW_PAD) + BOTTOM_GUTTER
+// TOP_GUTTER (30px) → corredor livre para loops no teto e descidas de message flow
+// BOTTOM_GUTTER (30px) → corredor livre antes da calha inferior
+// ROW_PAD (20px) → espaço respirável entre linhas de elementos
 const laneHeights = {};
 for (const laneId of laneOrder) {
   let maxRows = 1;
@@ -229,7 +286,10 @@ for (const laneId of laneOrder) {
     const [lid] = key.split('|');
     if (lid === laneId) maxRows = Math.max(maxRows, cellCount[key]);
   }
-  laneHeights[laneId] = Math.max(LANE_H, maxRows * (TASK_H + 20));
+  laneHeights[laneId] = Math.max(
+    LANE_H,
+    TOP_GUTTER + (maxRows * TASK_H) + ((maxRows - 1) * ROW_PAD) + BOTTOM_GUTTER
+  );
 }
 
 // Y de início de cada lane
@@ -262,14 +322,20 @@ const bounds = {};  // nodeId → {x, y, w, h}
 for (const id of Object.keys(nodes)) {
   const laneId = elemToLane[id];
   if (!laneId) continue;
-  const c       = col[id] ?? 0;
-  const row     = nodeRow[id] ?? 0;
+  const c   = col[id] ?? 0;
+  const row = nodeRow[id] ?? 0;
   const { w, h } = elemSize(nodes[id].type);
-  const lH      = laneHeights[laneId];
-  const rowH    = lH / (cellCount[`${laneId}|${c}`] || 1);
 
   const x = CONTENT_X0 + c * COL_W + (COL_W - w) / 2;
-  const y = laneY[laneId] + row * rowH + (rowH - h) / 2;
+
+  // Y com gutters explícitos:
+  //   yCenter = laneY + TOP_GUTTER + row*(TASK_H + ROW_PAD) + TASK_H/2
+  //   y = yCenter - h/2
+  // TASK_H/2 centraliza elementos de qualquer altura dentro do slot de 60px.
+  // Eventos (h=36) e gateways (h=50) ficam centrados no slot, tasks (h=60) o preenchem.
+  const yCenter = laneY[laneId] + TOP_GUTTER + (row * (TASK_H + ROW_PAD)) + (TASK_H / 2);
+  const y       = yCenter - (h / 2);
+
   bounds[id] = { x: Math.round(x), y: Math.round(y), w, h };
 }
 
@@ -354,16 +420,30 @@ for (const f of flows) {
     const tgtLane = elemToLane[f.target];
 
     if (srcLane && tgtLane && srcLane === tgtLane) {
-      // Loop intra-lane: retorna pelo teto da própria raia (não cruza outras lanes)
-      const localLoopY = laneY[srcLane] + 15;
-      waypoints = [
-        { x: Math.round(src.x + src.w / 2), y: src.y },
-        { x: Math.round(src.x + src.w / 2), y: localLoopY },
-        { x: Math.round(tgt.x + tgt.w / 2), y: localLoopY },
-        { x: Math.round(tgt.x + tgt.w / 2), y: tgt.y }
-      ];
+      // Verifica se a origem está na linha de baixo (Row 1)
+      const isBottomRow = src.y > laneY[srcLane] + (laneHeights[srcLane] / 2);
+
+      if (isBottomRow) {
+        // Loop saindo do Fundo (Piso da Raia) para não cruzar a Row 0
+        const bottomGutterY = laneY[srcLane] + laneHeights[srcLane] - 15;
+        waypoints = [
+          { x: Math.round(src.x + src.w / 2), y: src.y + src.h }, // Sai por baixo
+          { x: Math.round(src.x + src.w / 2), y: bottomGutterY },
+          { x: Math.round(tgt.x + tgt.w / 2), y: bottomGutterY },
+          { x: Math.round(tgt.x + tgt.w / 2), y: tgt.y + tgt.h }  // Entra por baixo
+        ];
+      } else {
+        // Loop saindo do Teto da Raia (Row 0)
+        const topGutterY = laneY[srcLane] + 15;
+        waypoints = [
+          { x: Math.round(src.x + src.w / 2), y: src.y },          // Sai por cima
+          { x: Math.round(src.x + src.w / 2), y: topGutterY },
+          { x: Math.round(tgt.x + tgt.w / 2), y: topGutterY },
+          { x: Math.round(tgt.x + tgt.w / 2), y: tgt.y }           // Entra por cima
+        ];
+      }
     } else {
-      // Loop cross-lane ou sem lane: calha inferior (backEdgeY)
+      // Loop Global (Cross-lane)
       waypoints = [
         { x: Math.round(src.x + src.w / 2), y: src.y + src.h },
         { x: Math.round(src.x + src.w / 2), y: backEdgeY },
@@ -372,17 +452,29 @@ for (const f of flows) {
       ];
     }
   } else if (isMessage) {
-    // Message Flow ortogonal.
-    // Detecta se a extremidade é um Pool inteiro (w === totalW) ou um nó.
-    // Pool → alinha verticalmente com o nó oposto (evita diagonal para o centro).
-    // Nó  → cotovelo em L com ponto de inflexão no meio do eixo Y.
-    const srcMidX  = Math.round(src.x + src.w / 2);
-    const tgtMidX  = Math.round(tgt.x + tgt.w / 2);
+    // ── Message Flow: linhas verticais limpas com conexão nas bordas corretas ─
+    //
+    // Princípio: MessageFlow cruza fronteiras de pool — deve ir verticalmente
+    // pelo ponto de conexão do elemento (centro-X), sem cotovelos desnecessários
+    // que criem tráfego no mesmo corredor que os back-edges de retrabalho.
+    //
+    // Separação de corredores:
+    //   Back-edges intra-lane  → piso da raia (laneY + laneH - 15)
+    //   Message Flows          → corredor central (srcMidX vertical)
+    //   Sequence Flows cross-Y → calhas entre colunas (gX)
+    const srcMidX   = Math.round(src.x + src.w / 2);
+    const tgtMidX   = Math.round(tgt.x + tgt.w / 2);
     const srcIsPool = src.w === totalW;
     const tgtIsPool = tgt.w === totalW;
 
+    // X da calha à direita da coluna do nó de origem — sempre livre de elementos.
+    // Folga garantida por construção: 30px entre borda direita do elemento e calha.
+    const srcColIdx = col[f.source] !== undefined ? col[f.source] : 0;
+    const gX        = CONTENT_X0 + (srcColIdx + 1) * COL_W;
+
     if (srcIsPool) {
-      // Pool como origem: sai da borda alinhado com o X do destino
+      // Pool externo → Nó interno: linha vertical alinhada ao midX do nó destino.
+      // Nó destino geralmente em col 0–1 com espaço livre à esquerda.
       const startY = src.y < tgt.y ? src.y + src.h : src.y;
       const endY   = tgt.y < src.y ? tgt.y + tgt.h : tgt.y;
       waypoints = [
@@ -390,48 +482,71 @@ for (const f of flows) {
         { x: tgtMidX, y: endY }
       ];
     } else if (tgtIsPool) {
-      // Pool como destino: chega na borda alinhado com o X da origem
-      const startY = src.y < tgt.y ? src.y + src.h : src.y;
-      const endY   = tgt.y > src.y ? tgt.y : tgt.y + tgt.h;
-      waypoints = [
-        { x: srcMidX, y: startY },
-        { x: srcMidX, y: endY }
-      ];
+      // Nó interno → Pool externo: usa CALHA (gutter) da coluna do nó.
+      // Evita qualquer elemento que esteja na mesma coluna (mesmo row diferente).
+      // Corredor: fundo do nó → cotovelo horizontal → calha livre → topo do pool.
+      const goDown = src.y < tgt.y;
+      if (goDown) {
+        waypoints = [
+          { x: srcMidX, y: src.y + src.h },  // saída pelo fundo do nó
+          { x: gX,      y: src.y + src.h },  // cotovelo horizontal → calha
+          { x: gX,      y: tgt.y }           // descida pela calha até o topo do pool
+        ];
+      } else {
+        waypoints = [
+          { x: srcMidX, y: src.y },          // saída pelo topo do nó
+          { x: gX,      y: src.y },          // cotovelo horizontal → calha
+          { x: gX,      y: tgt.y + tgt.h }  // subida pela calha até o fundo do pool
+        ];
+      }
     } else {
-      // Nó a nó: cotovelo em L com inflexão no ponto médio do eixo Y
-      const midY = Math.round(src.y + (tgt.y - src.y) / 2);
+      // Nó → Nó (pools diferentes): cotovelo em L pela calha da coluna de origem
       if (src.y < tgt.y) {
         waypoints = [
           { x: srcMidX, y: src.y + src.h },
-          { x: srcMidX, y: midY },
-          { x: tgtMidX, y: midY },
+          { x: gX,      y: src.y + src.h },
+          { x: gX,      y: tgt.y },
           { x: tgtMidX, y: tgt.y }
         ];
       } else {
         waypoints = [
           { x: srcMidX, y: src.y },
-          { x: srcMidX, y: midY },
-          { x: tgtMidX, y: midY },
+          { x: gX,      y: src.y },
+          { x: gX,      y: tgt.y + tgt.h },
           { x: tgtMidX, y: tgt.y + tgt.h }
         ];
       }
     }
   } else {
-    // Sequence Flow padrão (cotovelo L se mudar de lane, reta se mesma lane)
-    const srcLane = elemToLane[f.source];
-    const tgtLane = elemToLane[f.target];
-    if (srcLane && tgtLane && srcLane !== tgtLane) {
-      const midX = Math.round(src.x + src.w + (tgt.x - (src.x + src.w)) / 2);
+    // ── Sequence Flow: Port-Aware Routing ────────────────────────────────────
+    //
+    // Três casos:
+    //   1. Mesmo midY (< 10px) → linha horizontal direta: sai da direita, entra na esquerda
+    //   2. Origem ACIMA do destino → sai pelo fundo, desce em L, entra na esquerda
+    //   3. Origem ABAIXO do destino → sai pelo topo, sobe em L, entra na esquerda
+    const srcMidY = Math.round(src.y + src.h / 2);
+    const tgtMidY = Math.round(tgt.y + tgt.h / 2);
+    const srcMidX = Math.round(src.x + src.w / 2);
+
+    if (Math.abs(srcMidY - tgtMidY) < 10) {
+      // Mesma Linha: Sai da Direita, entra na Esquerda
       waypoints = [
-        { x: src.x + src.w, y: Math.round(src.y + src.h / 2) },
-        { x: midX, y: Math.round(src.y + src.h / 2) },
-        { x: midX, y: Math.round(tgt.y + tgt.h / 2) },
-        { x: tgt.x, y: Math.round(tgt.y + tgt.h / 2) }
+        { x: Math.round(src.x + src.w), y: srcMidY },
+        { x: Math.round(tgt.x),         y: tgtMidY }
+      ];
+    } else if (srcMidY < tgtMidY) {
+      // Origem ACIMA do destino: Sai por BAIXO, desce em L, entra na ESQUERDA
+      waypoints = [
+        { x: srcMidX,               y: src.y + src.h }, // Vértice inferior
+        { x: srcMidX,               y: tgtMidY },       // Desce em L
+        { x: Math.round(tgt.x),     y: tgtMidY }        // Segue para esquerda do alvo
       ];
     } else {
+      // Origem ABAIXO do destino: Sai por CIMA, sobe em L, entra na ESQUERDA
       waypoints = [
-        { x: src.x + src.w, y: Math.round(src.y + src.h / 2) },
-        { x: tgt.x, y: Math.round(tgt.y + tgt.h / 2) }
+        { x: srcMidX,               y: src.y },         // Vértice superior
+        { x: srcMidX,               y: tgtMidY },       // Sobe em L
+        { x: Math.round(tgt.x),     y: tgtMidY }        // Segue para esquerda do alvo
       ];
     }
   }

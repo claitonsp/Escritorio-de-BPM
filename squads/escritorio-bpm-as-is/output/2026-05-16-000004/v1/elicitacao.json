@@ -1,0 +1,132 @@
+{
+  "processo": "Conciliação e Baixa de Títulos",
+  "atores": [
+    { "id": "ator-01", "nome": "Analista Financeiro", "tipo": "interno" },
+    { "id": "sis-01", "nome": "Sistema", "tipo": "sistema" },
+    { "id": "ator-02", "nome": "Cliente", "tipo": "externo" }
+  ],
+  "atividades": [
+    {
+      "id": "ativ-01",
+      "nome_bpmn": "Identificar Recebimento",
+      "descricao": "Analista Financeiro identifica que o pagamento do cliente foi recebido e o registra.",
+      "ator_responsavel": "ator-01",
+      "sistema": null,
+      "task_type": "userTask"
+    },
+    {
+      "id": "ativ-02",
+      "nome_bpmn": "Realizar Conciliação",
+      "descricao": "Analista Financeiro realiza a conciliação do pagamento recebido com o título em aberto.",
+      "ator_responsavel": "ator-01",
+      "sistema": null,
+      "task_type": "userTask"
+    },
+    {
+      "id": "ativ-03",
+      "nome_bpmn": "Acionar Cliente",
+      "descricao": "Analista Financeiro contata o cliente para resolver a divergência identificada na conciliação.",
+      "ator_responsavel": "ator-01",
+      "sistema": null,
+      "task_type": "userTask"
+    },
+    {
+      "id": "ativ-04",
+      "nome_bpmn": "Baixar Título via Sistema",
+      "descricao": "Sistema executa automaticamente a baixa do título quando não há divergência na conciliação.",
+      "ator_responsavel": "sis-01",
+      "sistema": "sis-01",
+      "task_type": "serviceTask"
+    },
+    {
+      "id": "ativ-05",
+      "nome_bpmn": "Baixar Título Manual",
+      "descricao": "Analista Financeiro executa manualmente a baixa do título após resolução da divergência com o cliente.",
+      "ator_responsavel": "ator-01",
+      "sistema": null,
+      "task_type": "userTask"
+    }
+  ],
+  "eventos": [
+    {
+      "id": "ev-01",
+      "tipo": "start",
+      "nome_bpmn": "Pagamento recebido",
+      "descricao": "Evento de mensagem disparado quando o cliente realiza o pagamento."
+    },
+    {
+      "id": "ev-02",
+      "tipo": "end",
+      "nome_bpmn": "Título baixado",
+      "descricao": "Encerramento do processo quando o título é baixado automaticamente pelo sistema."
+    },
+    {
+      "id": "ev-03",
+      "tipo": "end",
+      "nome_bpmn": "Título baixado",
+      "descricao": "Encerramento do processo quando o título é baixado manualmente após resolução da divergência."
+    }
+  ],
+  "gateways": [
+    {
+      "id": "gw-01",
+      "tipo": "exclusive",
+      "nome_bpmn": "Existe divergência?",
+      "descricao": "Verifica se há divergência entre o pagamento recebido e o título em aberto.",
+      "condicoes": [
+        {
+          "label": "Não",
+          "descricao": "Sem divergência — o pagamento bate com o título. Baixa automática pelo sistema.",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-04"
+        },
+        {
+          "label": "Sim",
+          "descricao": "Há divergência — é necessário acionar o cliente para resolução.",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-03"
+        }
+      ]
+    },
+    {
+      "id": "gw-02",
+      "tipo": "exclusive",
+      "nome_bpmn": "Problema foi resolvido?",
+      "descricao": "Verifica se o contato com o cliente resolveu a divergência.",
+      "condicoes": [
+        {
+          "label": "Sim",
+          "descricao": "Problema resolvido — Analista realiza a baixa manual do título.",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-05"
+        },
+        {
+          "label": "Não",
+          "descricao": "Problema não resolvido — retorna ao contato com o cliente após aguardar 24h.",
+          "destino_tipo": "loop",
+          "destino_id": "ativ-03"
+        }
+      ]
+    }
+  ],
+  "sistemas": [
+    { "id": "sis-01", "nome": "Sistema", "tipo": "outro" }
+  ],
+  "regras_de_negocio": [
+    {
+      "id": "rn-01",
+      "descricao": "Quando não há divergência na conciliação, a baixa do título é executada automaticamente pelo sistema, sem intervenção do Analista.",
+      "atividade_relacionada": "ativ-04"
+    },
+    {
+      "id": "rn-02",
+      "descricao": "Quando há divergência, o Analista Financeiro aciona o cliente. Caso o problema não seja resolvido, o loop se repete após 24h (controle de tempo obrigatório para evitar loop cego).",
+      "atividade_relacionada": "ativ-03"
+    }
+  ],
+  "observacoes": [
+    "O evento de início é do tipo mensagem (Pagamento recebido), disparado externamente pelo cliente.",
+    "Existem dois end events semanticamente idênticos ('Título baixado') em caminhos distintos — mantidos separados para rastreabilidade no diagrama.",
+    "O loop de 'Acionar Cliente' não tem limite de tentativas definido na transcrição. Timer PT24H aplicado conforme regra padrão do pipeline."
+  ]
+}

@@ -64,9 +64,26 @@ grep -oP 'sequenceFlow[^>]*targetRef="ativ-[^"]*"[^>]*>' processo-as-is.bpmn \
 grep -c 'intermediateCatchEvent' processo-as-is.bpmn
 ```
 
+```bash
+# 1i. Atividades zumbi — userTask/serviceTask/scriptTask sem sequenceFlow de saída
+# Uma task cujo id não aparece como sourceRef em nenhum sequenceFlow tem token preso:
+# o processo executa a tarefa e nunca sai. Falta endEvent ou conexão de saída.
+# Resultado deve ser zero linhas.
+node -e "
+const fs = require('fs');
+const xml = fs.readFileSync('processo-as-is.bpmn', 'utf8');
+const ids = [...xml.matchAll(/<(?:userTask|serviceTask|scriptTask)\s[^>]*id=\"([^\"]+)\"/g)].map(m => m[1]);
+const srcs = new Set([...xml.matchAll(/sourceRef=\"([^\"]+)\"/g)].map(m => m[1]));
+const zombies = ids.filter(id => !srcs.has(id));
+if (zombies.length) { console.log('ZUMBI (sem saída):', zombies.join(', ')); }
+"
+```
+
 Se qualquer verificação retornar resultado, **corrija o BPMN antes de continuar**. Não avance para o Auditor com erros.
 
 **Nota sobre 1g × 1h:** `targetRef` duplicado em 1g é loop intencional quando o segundo `sourceRef` é um `intermediateCatchEvent` (timer). Verifique 1h antes de concluir que 1g é violação.
+
+**Nota sobre 1i:** atividade terminal intencional (estado em particípio passado como "Plano B acionado") deve ser modelada como `<endEvent>`, não como task. Se 1i retornar esse tipo de ID, o erro está no Modelador — corrija a tag, não ignore o resultado.
 
 ## Passo 2 — Layout visual
 
@@ -85,7 +102,7 @@ Abra no bpmn.io e confirme visualmente:
 ## Passo 3 — Aprovação
 
 Só passe para o Auditor após:
-- [ ] Todas as 7 verificações grep retornaram zero resultados (1g requer inspeção manual)
+- [ ] Todas as 9 verificações retornaram zero resultados (1g requer inspeção manual; 1i usa node)
 - [ ] Layout visual validado no bpmn.io
 
 Cole o conteúdo do `elicitacao.json` para o Auditor processar.
