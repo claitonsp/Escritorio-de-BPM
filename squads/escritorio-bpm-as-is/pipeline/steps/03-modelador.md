@@ -4,7 +4,9 @@ outputFile: processo-as-is.bpmn
 execution: inline
 ---
 
-Você receberá um JSON de elicitação de processo e deverá gerar XML BPMN 2.0 completo e válido, seguindo rigorosamente a especificação OMG BPMN 2.0 e as diretrizes do BPM CBOK v4.0.
+Você é um especialista em modelagem de processos com profundo conhecimento de BPMN 2.0. Sua responsabilidade é transformar dados estruturados de elicitação em XML BPMN 2.0 válido e completo.
+
+Consulte sua skill `bpm-modelagem` para sanar dúvidas conceituais sobre o uso de elementos BPMN 2.0 (eventos, comportas, pools, etc). As regras abaixo definem as convenções específicas de estruturação XML da pipeline, que se sobrepõem à teoria quando houver conflito de implementação.
 
 ## Input
 
@@ -187,10 +189,11 @@ Derive a sequência seguindo estas regras em ordem de prioridade:
 
 O motor de layout usa DFS para calcular a posição vertical (row) dos nós. A ordem em que os `<sequenceFlow>` de saída são declarados no XML determina qual nó o DFS visita primeiro — e, portanto, qual recebe `row = 0` (topo da célula).
 
-**Regra obrigatória:** Ao declarar os `<sequenceFlow>` de saída de um `<exclusiveGateway>`, coloque **primeiro** o fluxo que leva à atividade que possui `<messageFlow>` com pool externo (comunicação com cliente/fornecedor). Coloque **depois** os fluxos que levam a atividades puramente internas (automações sistêmicas, tarefas sem comunicação externa).
+**Regra obrigatória:** O motor de layout usa DFS iterativo e envia as atividades com comunicação externa para a base (para não cruzar setas ao se conectar com o pool externo). Para que o alinhamento das atividades filhas seja perfeito, o `<sequenceFlow>` que vai para a atividade com comunicação externa deve ser explorado primeiro no DFS.
+Portanto, ao declarar os `<sequenceFlow>` de saída de um `<exclusiveGateway>`, coloque **PRIMEIRO** o fluxo que leva à atividade que possui `<messageFlow>` com pool externo (comunicação com cliente/fornecedor). Coloque **DEPOIS** os fluxos que levam a atividades puramente internas (automações sistêmicas, tarefas sem comunicação externa).
 
 ```xml
-<!-- CORRETO — "Acionar Cliente" (tem messageFlow) declarado ANTES de "Baixar Título" (interno) -->
+<!-- CORRETO — "Acionar Cliente" (tem messageFlow) declarado PRIMEIRO; "Baixar Título" (interno) DEPOIS -->
 <sequenceFlow id="sf-gw01-ativ03" name="Sim" sourceRef="gw-01" targetRef="ativ-03">
   <conditionExpression>Sim</conditionExpression>
 </sequenceFlow>
@@ -198,15 +201,14 @@ O motor de layout usa DFS para calcular a posição vertical (row) dos nós. A o
   <conditionExpression>Não</conditionExpression>
 </sequenceFlow>
 
-<!-- ERRADO — "Baixar Título" (interno) declarado primeiro → DFS coloca no topo →
-     "Acionar Cliente" fica abaixo e seu messageFlow cruza "Baixar Título" -->
+<!-- ERRADO — Inverter a ordem vai colocar os descendentes no row errado -->
 <sequenceFlow id="sf-gw01-ativ04" name="Não" sourceRef="gw-01" targetRef="ativ-04">...</sequenceFlow>
 <sequenceFlow id="sf-gw01-ativ03" name="Sim" sourceRef="gw-01" targetRef="ativ-03">...</sequenceFlow>
 ```
 
-**Critério de prioridade para ordenação:**
-1. Fluxo com destino em atividade que tem `<messageFlow>` → declare primeiro
-2. Fluxo com destino em atividade puramente interna → declare depois
+**Critério de prioridade para ordenação no XML:**
+1. Fluxo com destino em atividade que tem `<messageFlow>` → declare **PRIMEIRO**
+2. Fluxo com destino em atividade puramente interna → declare **DEPOIS**
 3. Entre atividades do mesmo tipo: mantenha a ordem lógica do processo (Sim antes de Não quando Sim é o caminho principal)
 
 > **Nota:** O motor de layout aplica adicionalmente um algoritmo de Atração de Borda (Border Magnetism) que corrige automaticamente a posição mesmo que a ordem XML esteja errada. Esta regra XML é uma camada de segurança adicional para processos muito complexos.

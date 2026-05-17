@@ -230,12 +230,12 @@ for (const id of topoOrder) {
 // MessageFlow ficam embaixo — a linha de mensagem rasga os nós intermediários.
 //
 // Regra de Atração de Borda (Border Magnetism):
-//   Peso −1 → nó tem MessageFlow com pool externo → row 0 (flutua ao TOPO)
-//   Peso  0 → nó puramente interno                → rows subsequentes por DFS
+//   Peso  1 → nó tem MessageFlow com pool externo → afunda para a base da lane (row 1, 2...)
+//   Peso  0 → nó puramente interno                → topo (row 0)
 //
-// Efeito: "Acionar Cliente" (messageFlow para parte-cliente) sempre fica no topo
-// da célula; "Baixar Título via Sistema" (sem fluxo externo) fica abaixo.
-// Com o topo livre, a linha de mensagem desce pela calha sem cruzar nada.
+// Efeito: "Baixar Título via Sistema" (sem fluxo externo) fica no topo;
+// "Acionar Cliente" (messageFlow para parte-cliente) afunda para a base da célula.
+// Como o pool externo fica embaixo da pipeline, a linha de mensagem cai limpa sem cruzar ninguém.
 
 // IDs de pools externos (participants sem processRef = Black Box pools)
 const _sortParticipants = getParticipants();
@@ -243,12 +243,12 @@ const _extPoolIds       = new Set(
   _sortParticipants.filter(p => !p.processRef).map(p => p.id)
 );
 
-// Peso direcional: −1 se o nó se comunica (origem ou destino) com pool externo
+// Peso direcional: 1 se o nó se comunica (origem ou destino) com pool externo (fundo)
 function _msgBorderWeight(nodeId) {
   for (const f of flows) {
     if (f.type !== 'message') continue;
-    if (f.source === nodeId && _extPoolIds.has(f.target)) return -1;
-    if (f.target === nodeId && _extPoolIds.has(f.source)) return -1;
+    if (f.source === nodeId && _extPoolIds.has(f.target)) return 1;
+    if (f.target === nodeId && _extPoolIds.has(f.source)) return 1;
   }
   return 0;
 }
@@ -420,10 +420,12 @@ for (const f of flows) {
     const tgtLane = elemToLane[f.target];
 
     if (srcLane && tgtLane && srcLane === tgtLane) {
-      // Verifica se a origem está na linha de baixo (Row 1)
-      const isBottomRow = src.y > laneY[srcLane] + (laneHeights[srcLane] / 2);
+      // Verifica se a origem OU o destino estão na linha de baixo (Row 1)
+      const srcIsBottom = src.y > laneY[srcLane] + (laneHeights[srcLane] / 2) - 20;
+      const tgtIsBottom = tgt.y > laneY[tgtLane] + (laneHeights[tgtLane] / 2) - 20;
+      const useBottom = srcIsBottom || tgtIsBottom;
 
-      if (isBottomRow) {
+      if (useBottom) {
         // Loop saindo do Fundo (Piso da Raia) para não cruzar a Row 0
         const bottomGutterY = laneY[srcLane] + laneHeights[srcLane] - 15;
         waypoints = [
@@ -467,10 +469,10 @@ for (const f of flows) {
     const srcIsPool = src.w === totalW;
     const tgtIsPool = tgt.w === totalW;
 
-    // X da calha à direita da coluna do nó de origem — sempre livre de elementos.
-    // Folga garantida por construção: 30px entre borda direita do elemento e calha.
+    // X da calha à direita da coluna do nó de origem.
+    // Usamos o espaço entre o elemento (ELEM_W) e o fim da coluna (COL_W).
     const srcColIdx = col[f.source] !== undefined ? col[f.source] : 0;
-    const gX        = CONTENT_X0 + (srcColIdx + 1) * COL_W;
+    const gX = Math.round(CONTENT_X0 + srcColIdx * COL_W + ELEM_W + (COL_W - ELEM_W)/2);
 
     if (srcIsPool) {
       // Pool externo → Nó interno: linha vertical alinhada ao midX do nó destino.
@@ -487,11 +489,22 @@ for (const f of flows) {
       // Corredor: fundo do nó → cotovelo horizontal → calha livre → topo do pool.
       const goDown = src.y < tgt.y;
       if (goDown) {
-        waypoints = [
-          { x: srcMidX, y: src.y + src.h },  // saída pelo fundo do nó
-          { x: gX,      y: src.y + src.h },  // cotovelo horizontal → calha
-          { x: gX,      y: tgt.y }           // descida pela calha até o topo do pool
-        ];
+        const srcLane = elemToLane[f.source];
+        const isBottomRow = srcLane && src.y > laneY[srcLane] + (laneHeights[srcLane] / 2) - 20;
+        
+        if (isBottomRow) {
+          waypoints = [
+            { x: srcMidX, y: src.y + src.h }, // saída pelo fundo do nó
+            { x: srcMidX, y: tgt.y }          // desce direto sem cotovelos
+          ];
+        } else {
+          waypoints = [
+            { x: srcMidX, y: src.y + src.h },  // saída pelo fundo do nó
+            { x: srcMidX, y: src.y + src.h + (ROW_PAD/2) }, // desce até o meio do gap
+            { x: gX,      y: src.y + src.h + (ROW_PAD/2) }, // cotovelo horizontal → calha
+            { x: gX,      y: tgt.y }           // descida pela calha até o topo do pool
+          ];
+        }
       } else {
         waypoints = [
           { x: srcMidX, y: src.y },          // saída pelo topo do nó
@@ -534,19 +547,18 @@ for (const f of flows) {
         { x: Math.round(src.x + src.w), y: srcMidY },
         { x: Math.round(tgt.x),         y: tgtMidY }
       ];
-    } else if (srcMidY < tgtMidY) {
-      // Origem ACIMA do destino: Sai por BAIXO, desce em L, entra na ESQUERDA
-      waypoints = [
-        { x: srcMidX,               y: src.y + src.h }, // Vértice inferior
-        { x: srcMidX,               y: tgtMidY },       // Desce em L
-        { x: Math.round(tgt.x),     y: tgtMidY }        // Segue para esquerda do alvo
-      ];
     } else {
-      // Origem ABAIXO do destino: Sai por CIMA, sobe em L, entra na ESQUERDA
+      // Diferente Linha: Sai da direita, desce/sobe pela calha direita, entra na esquerda
+      const srcRight = Math.round(src.x + src.w);
+      const tgtLeft = Math.round(tgt.x);
+      const srcColIdx = col[f.source] !== undefined ? col[f.source] : 0;
+      const gX = Math.round(CONTENT_X0 + srcColIdx * COL_W + ELEM_W + (COL_W - ELEM_W)/2);
+      
       waypoints = [
-        { x: srcMidX,               y: src.y },         // Vértice superior
-        { x: srcMidX,               y: tgtMidY },       // Sobe em L
-        { x: Math.round(tgt.x),     y: tgtMidY }        // Segue para esquerda do alvo
+        { x: srcRight, y: srcMidY },        // Sai da direita
+        { x: gX,       y: srcMidY },        // Vai até a calha
+        { x: gX,       y: tgtMidY },        // Sobe/Desce pela calha
+        { x: tgtLeft,  y: tgtMidY }         // Entra na esquerda do alvo
       ];
     }
   }

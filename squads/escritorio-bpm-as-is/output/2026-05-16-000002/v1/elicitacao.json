@@ -1,0 +1,56 @@
+{
+  "processo": "Conciliação e Baixa de Título",
+  "atores": [
+    { "id": "ator-01", "nome": "Analista Financeiro", "tipo": "interno" },
+    { "id": "ator-02", "nome": "Cliente", "tipo": "externo" },
+    { "id": "ator-03", "nome": "Sistema", "tipo": "sistema" }
+  ],
+  "atividades": [
+    { "id": "ativ-01", "nome_bpmn": "Identificar Recebimento", "descricao": "Analista Financeiro identifica o recebimento do pagamento realizado pelo cliente.", "ator_responsavel": "ator-01", "sistema": null, "task_type": "userTask" },
+    { "id": "ativ-02", "nome_bpmn": "Realizar Conciliação", "descricao": "Analista Financeiro realiza a conciliação financeira do pagamento recebido.", "ator_responsavel": "ator-01", "sistema": null, "task_type": "userTask" },
+    { "id": "ativ-03", "nome_bpmn": "Baixar Título", "descricao": "Sistema executa automaticamente a baixa do título após conciliação sem divergência.", "ator_responsavel": "ator-03", "sistema": "sis-01", "task_type": "serviceTask" },
+    { "id": "ativ-04", "nome_bpmn": "Acionar Cliente", "descricao": "Analista Financeiro entra em contato com o cliente para resolver divergência identificada na conciliação.", "ator_responsavel": "ator-01", "sistema": null, "task_type": "userTask" },
+    { "id": "ativ-05", "nome_bpmn": "Baixar Título", "descricao": "Analista Financeiro realiza a baixa do título após resolução da divergência com o cliente.", "ator_responsavel": "ator-01", "sistema": null, "task_type": "userTask" }
+  ],
+  "eventos": [
+    { "id": "ev-01", "tipo": "start", "nome_bpmn": "Pagamento Recebido Cliente", "descricao": "Evento de mensagem disparado quando o cliente realiza o pagamento." },
+    { "id": "ev-02", "tipo": "end", "nome_bpmn": "Título Baixado", "descricao": "Processo encerrado após baixa automática do título sem divergência." },
+    { "id": "ev-03", "tipo": "end", "nome_bpmn": "Título Baixado", "descricao": "Processo encerrado após baixa manual do título com divergência resolvida." }
+  ],
+  "gateways": [
+    {
+      "id": "gw-01",
+      "tipo": "exclusive",
+      "nome_bpmn": "Existe divergência na conciliação?",
+      "descricao": "Verifica se há divergência identificada no processo de conciliação financeira.",
+      "condicoes": [
+        { "label": "Não", "descricao": "Conciliação sem divergência; prossegue para baixa automática do título pelo sistema.", "destino_tipo": "atividade", "destino_id": "ativ-03" },
+        { "label": "Sim", "descricao": "Conciliação com divergência; prossegue para acionamento do cliente.", "destino_tipo": "atividade", "destino_id": "ativ-04" }
+      ]
+    },
+    {
+      "id": "gw-02",
+      "tipo": "exclusive",
+      "nome_bpmn": "Problema foi resolvido?",
+      "descricao": "Verifica se o problema de divergência foi resolvido após contato com o cliente.",
+      "condicoes": [
+        { "label": "Não", "descricao": "Problema não resolvido; retorna para acionamento do cliente configurando loop de retrabalho.", "destino_tipo": "loop", "destino_id": "ativ-04" },
+        { "label": "Sim", "descricao": "Problema resolvido; prossegue para baixa manual do título pelo Analista Financeiro.", "destino_tipo": "atividade", "destino_id": "ativ-05" }
+      ]
+    }
+  ],
+  "sistemas": [
+    { "id": "sis-01", "nome": "Sistema", "tipo": "outro" }
+  ],
+  "regras_de_negocio": [
+    { "id": "rn-01", "descricao": "A baixa automática do título pelo sistema ocorre somente quando não há divergência na conciliação.", "atividade_relacionada": "ativ-03" },
+    { "id": "rn-02", "descricao": "Enquanto o problema de divergência não for resolvido com o cliente, o Analista Financeiro deve continuar acionando o cliente em loop.", "atividade_relacionada": "ativ-04" },
+    { "id": "rn-03", "descricao": "Quando há divergência e o problema é resolvido, a baixa do título é executada manualmente pelo Analista Financeiro, não pelo sistema.", "atividade_relacionada": "ativ-05" }
+  ],
+  "observacoes": [
+    "A descrição menciona dois caminhos que culminam em 'Baixar título', mas com atores diferentes: no caminho sem divergência o executor é o Sistema (serviceTask), e no caminho com divergência resolvida o executor é o Analista Financeiro (userTask). Foram modelados como duas atividades distintas (ativ-03 e ativ-05) para preservar essa diferença de responsabilidade.",
+    "O sistema responsável pela baixa automática não é identificado pelo nome na descrição (mencionado apenas como 'Sistema'). Recomenda-se confirmar qual sistema ERP ou financeiro executa essa operação.",
+    "O cliente (ator-02) é referenciado como destinatário do contato em 'Acionar cliente', mas não possui atividade própria no processo descrito; deve ser representado como Pool Black Box separado no diagrama BPMN.",
+    "Não há informação sobre SLA, prazo máximo de loop ou critério de escalonamento caso o problema com o cliente não seja resolvido após N tentativas. Recomenda-se elicitar essa regra de negócio."
+  ]
+}

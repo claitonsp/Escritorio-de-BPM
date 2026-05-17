@@ -13,6 +13,7 @@ Você receberá o JSON de elicitação de um processo AS-IS. Analise-o sob três
 ## Frameworks de análise
 
 ### 1. ABPMP BPM CBOK v4.0
+Consulte sua skill `bpm-auditoria` para fundamentar os achados com base nas melhores práticas documentadas no CBOK.
 Avalie: qualidade dos pontos de handoff, completude dos controles em gateways, presença de pontos de medição, tratamento de exceções, rastreabilidade de documentos, e lacunas de especificação (fluxos indefinidos).
 
 ### 2. Lean Six Sigma — Desperdícios TIMWOOD

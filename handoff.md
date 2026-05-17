@@ -57,7 +57,7 @@ Hermes notifica via Telegram — BPMN pronto
 Git versiona os outputs por run
 ```
 
-O TO-BE é produzido manualmente a partir do diagnóstico. Não faz parte do pipeline automatizado.
+O TO-BE não faz parte do escopo do sistema.
 
 ### Stack
 
@@ -97,15 +97,15 @@ Run de validação `output/2026-05-16-000003/v1/` com processo de texto (Concili
 ✅ Validado no bpmn.io        → Message Start Event, lanes, timer, loop intra-lane confirmados
 ```
 
-Run de validação `output/2026-05-16-000004/v1/` — sessão 6 (Conciliação e Baixa de Títulos, refatorado):
+Run de validação `output/2026-05-16-000004/v1/` — sessão 6 e 7 (Conciliação e Baixa de Títulos, refatorado):
 
 ```
 ✅ Step 01 — Elicitador       → elicitacao.json (5 ativ, 2 gw, 3 eventos, 1 ator externo)
-✅ Step 03 — Modelador        → processo-as-is.bpmn (estrutura corrigida: timer antes do gw-02)
-✅ bpmn-layout.js             → processo-as-is-layout.bpmn (port-aware routing, 9 colunas)
+✅ Step 03 — Modelador        → processo-as-is.bpmn (estrutura corrigida: timer antes do gw-02, ordenação corrigida para afundar messageFlows)
+✅ bpmn-layout.js             → processo-as-is-layout.bpmn (Gutter Routing, Border Magnetism inverso, sem cruzamentos)
 ✅ Step 04 — Checkpoint BPMN  → 9/9 aprovadas
 ✅ Step 05 — Auditor          → diagnostico-as-is.json (14 achados: CBOK, Lean, ISO 9001)
-⏳ Step 06 — Checkpoint Audit → pendente
+✅ Step 06 — Checkpoint Audit → aprovado (sessão 7 — pipeline AS-IS validado e completo visualmente)
 ```
 
 ### Hermes — instalado e configurado (Fases 1 a 4 concluídas)
@@ -187,6 +187,13 @@ Script `install-skills.bat` na raiz: copia de `skills/` para `~/.hermes/skills/l
 4. **Correção estrutural no BPMN (03-modelador.md regra 5)**: o timer de controle de loop deve ser um passo sequencial ANTES do gateway de decisão, não uma branch do "Não". Padrão correto: `[atividade] → [timer] → [gateway] → Sim: avança / Não: back-edge para [atividade]`. O prompt foi reescrito com template XML completo e seção de erro crítico a evitar.
 
 5. **Constantes atuais**: `TOP_GUTTER=30`, `BOTTOM_GUTTER=30`, `ROW_PAD=20`, `COL_PAD=40`, `COL_W=180`, `LANE_H=120`, `ELEM_W=120`, `TASK_H=60`, `EVENT_W=36`, `GW_W=50`, `BACK_MARGIN=40`.
+
+**Sessão 7 — Gutter Routing e Inversão de Magnetismo Visual:**
+
+1. **Border Magnetism Invertido**: Atividades que se comunicam com o pool externo agora **afundam para a base da lane** (peso 1) em vez de flutuar (peso -1). Como o pool externo fica fisicamente abaixo, a linha do Message Flow cai livremente sem cruzar as atividades internas que ficam no topo.
+2. **Gutter Routing para SequenceFlow**: Setas que mudam de linha (Y) não sobem/descem mais pelo meio da coluna correndo o risco de cruzar ("raio-x") outro nó. Elas saem pela direita, usam a calha livre entre as colunas (`gX`) e entram no destino, garantindo diagramas 100% livres de sobreposição.
+3. **Calha Inferior (Bottom Gutter) Inteligente**: Loops (back-edges) agora avaliam se a origem **ou o destino** estão na linha de baixo (Row 1). Se sim, o loop usa o piso da raia para retornar, sem cruzar e atropelar a atividade da linha de cima.
+4. **Regra XML Reajustada (`03-modelador.md`)**: Instrução de ordenação revertida para declarar fluxos com MessageFlow **primeiro**. No algoritmo DFS, isso as joga para o fundo da pilha topológica, casando perfeitamente com a nova regra de Border Magnetism.
 
 **Pendente — validação final no Bizagi:**
 Validado no bpmn.io (sessão 4). Import no Bizagi ainda pendente.
@@ -281,7 +288,7 @@ Validado no bpmn.io (sessão 4). Import no Bizagi ainda pendente.
 | bpmn-layout.js — port-aware routing (fundo/topo por posição do nó) | Concluído (sessão 6) |
 | bpmn-layout.js — COL_PAD aumentado para 40 (fôlego para renderizadores) | Concluído (sessão 6) |
 | 03-modelador.md — regra 5 corrigida: timer antes do gateway, não na branch "Não" | Concluído (sessão 6) |
-| run 2026-05-16-000004 — steps 01-05 concluídos, step 06 pendente | Pendente |
+| run 2026-05-16-000004 — pipeline AS-IS completo (steps 01-06) | Concluído (sessão 7) |
 | skill bpm-pipeline — reescrever para o fluxo real (sem npx opensquad run) | Pendente |
 | Hermes — atualizar API keys no .hermes/.env (Anthropic + OpenAI) | Pendente |
 | Fase 6 — teste ponta a ponta (Telegram → transcrição → BPMN) | Pendente |
@@ -320,10 +327,6 @@ Ator externo: `"tipo": "externo"` gera Pool Black Box. Nunca Lane.
 8. Atividade terminal sem saída definida recebe `<endEvent>` imediato
 9. Tag de tarefa determinada pelo campo `task_type` do JSON
 
-### `07-tobe.md`
-
-Reescrito genérico com as mesmas regras do Modelador.
-
 ### `04-checkpoint-bpmn.md`
 
 Validação automática com grep bloqueia se (9 verificações):
@@ -336,10 +339,6 @@ Validação automática com grep bloqueia se (9 verificações):
 - 1g. targetRef duplicados em sequenceFlows (convergência implícita — inspeção manual; cruzar com 1h)
 - 1h. Loop sem controle — back-edge direto de gateway para atividade sem timer intermediário
 - 1i. Task zumbi — userTask/serviceTask/scriptTask sem sourceRef em nenhum sequenceFlow (token preso; usa node)
-
-### `08-checkpoint-tobe.md`
-
-Mesma validação do checkpoint BPMN adaptada para TO-BE, incluindo verificação de achados de prioridade alta.
 
 ## bpmn-layout.js
 
@@ -405,6 +404,9 @@ Limitação conhecida: 23 colunas no diagrama atual refletem o modelo linear do 
 | bpmn-layout.js — back-edge row 1 usa piso, back-edge row 0 usa teto | Implementado (sessão 6) |
 | bpmn-layout.js — COL_PAD=40 reduz auto-rerouting em renderizadores | Implementado (sessão 6) |
 | 03-modelador.md — timer antes do gateway (não na branch Não) | Corrigido (sessão 6) |
+| bpmn-layout.js — Border Magnetism afunda atividades com MessageFlow | Implementado (sessão 7) |
+| bpmn-layout.js — Gutter Routing p/ SequenceFlow (via calha direita) | Implementado (sessão 7) |
+| bpmn-layout.js — Back-edge inteligente (usa piso se origem ou destino em Row 1) | Implementado (sessão 7) |
 | skill bpm-pipeline — reescrever sem npx opensquad run | Pendente |
 | Validar import visual no Bizagi | Pendente |
 
