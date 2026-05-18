@@ -1,0 +1,69 @@
+{
+  "processo": "Solicitação de Cancelamento de Serviço",
+  "resumo_executivo": "O modelo AS-IS apresenta falhas críticas de completude nas dimensões ARIS, especialmente na ausência explícita de dados (entradas/saídas) e entregáveis associados às atividades. Há desalinhamento hierárquico grave: o ator 'Cliente' é modelado como participante externo no BPMN, mas não possui lane própria, violando a exigência de rastreabilidade operacional para atores externos que interagem diretamente com o processo. Além disso, o modelo contém caminhos indefinidos — as atividades 'ativ-04', 'ativ-06', 'ativ-07', 'ativ-09' e 'ativ-10' estão fora da lane do Atendente de Retenção e não possuem lanes atribuídas, configurando atividades órfãs. A notação é formalmente válida, mas a ausência de dados e entregáveis reduz drasticamente sua utilidade analítica conforme CBOK v4.0.",
+  "metricas_estruturais": {
+    "total_atividades": 10,
+    "atividades_manuais": 5,
+    "atividades_automaticas": 5,
+    "total_handoffs": 0,
+    "total_gateways": 2,
+    "caminhos_indefinidos": 5,
+    "atores_internos": 1,
+    "atores_externos": 1
+  },
+  "achados": [
+    {
+      "id": "ach-01",
+      "secao_cbok": "4.2.5 — Dimensão Dados",
+      "categoria": "Incompletude_ARIS",
+      "descricao": "Nenhuma atividade possui entradas ou saídas de dados/documentos especificadas no JSON de elicitação. A dimensão 'Dados' está totalmente ausente, impedindo análise de qualidade da informação, integridade de interfaces e conformidade com políticas de governança de dados.",
+      "elementos_relacionados": ["ativ-01", "ativ-02", "ativ-03", "ativ-04", "ativ-05", "ativ-06", "ativ-07", "ativ-08", "ativ-09", "ativ-10"],
+      "impacto_potencial": "Impossibilidade de mapear fontes de dados, validar integridade das informações trocadas e garantir conformidade com LGPD e políticas internas de gestão documental.",
+      "prioridade": "alta",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "O campo 'dados_entrada' e 'dados_saida' não existe em nenhuma atividade do JSON de elicitação; essa ausência é explícita e verificável em todos os 10 registros da lista 'atividades'.",
+      "recomendacao": "Realizar elicitação complementar com stakeholders para identificar, para cada atividade, os documentos, campos, formatos e sistemas envolvidos nas entradas e saídas de dados, e registrá-los nos metadados correspondentes."
+    },
+    {
+      "id": "ach-02",
+      "secao_cbok": "4.2.5 — Dimensão Entregáveis",
+      "categoria": "Incompletude_ARIS",
+      "descricao": "Nenhum entregável (produto, serviço ou valor gerado) é declarado para qualquer atividade ou para o processo como um todo. A dimensão 'Entregáveis' está completamente omitida, inviabilizando a avaliação de valor ao cliente e alinhamento com objetivos estratégicos.",
+      "elementos_relacionados": ["ativ-01", "ativ-02", "ativ-03", "ativ-04", "ativ-05", "ativ-06", "ativ-07", "ativ-08", "ativ-09", "ativ-10"],
+      "impacto_potencial": "Falta de clareza sobre o que efetivamente é entregue ao cliente em cada etapa e ao final do processo, prejudicando medição de satisfação, SLA e melhoria contínua baseada em resultados.",
+      "prioridade": "alta",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "O campo 'entregavel' ou equivalente não aparece em nenhuma atividade ou no nó raiz do JSON de elicitação; essa lacuna é total e direta.",
+      "recomendacao": "Definir e documentar, para cada atividade e para cada evento final, o entregável específico gerado (ex: 'Proposta de Retenção formalizada', 'Boleto de Quitação emitido', 'Comprovante de Encerramento enviado'), vinculando-os aos critérios de aceite do cliente."
+    },
+    {
+      "id": "ach-03",
+      "secao_cbok": "4.7 — Alinhamento da Arquitetura de Negócio",
+      "categoria": "Desalinhamento_Hierarquico",
+      "descricao": "Atividades executadas por 'sis-01' (ativ-04, ativ-06, ativ-07, ativ-09, ativ-10) não possuem lanes atribuídas no BPMN e estão desalinhadas com a estrutura organizacional. O ator externo 'Cliente' também não possui lane, embora participe ativamente via eventos e mensagens, violando a exigência de rastreabilidade de responsabilidades operacionais.",
+      "elementos_relacionados": ["ativ-04", "ativ-06", "ativ-07", "ativ-09", "ativ-10", "ev-01", "part-ator-02"],
+      "impacto_potencial": "Dificuldade de atribuição de responsabilidade, falhas na governança de processos automatizados, e impossibilidade de auditoria de conformidade operacional para tarefas sistêmicas.",
+      "prioridade": "alta",
+      "confiabilidade": "alta",
+      "justificativa_confiabilidade": "No XML BPMN, apenas a lane 'lane-ator-01' é declarada, e seus flowNodeRef listam apenas elementos relacionados ao atendente; as atividades atribuídas a 'sis-01' e o participante 'Cliente' não constam em nenhuma lane, o que é verificável diretamente no trecho <laneSet>.",
+      "recomendacao": "Criar lanes explícitas para 'Sistema de Gestão de Contratos' e para 'Cliente', redistribuindo todas as atividades e eventos sob suas respectivas lanes, garantindo que toda execução tenha um responsável organizacional definido."
+    },
+    {
+      "id": "ach-04",
+      "secao_cbok": "4.6.4 — Níveis de Abstração",
+      "categoria": "Desalinhamento_Hierarquico",
+      "descricao": "O modelo mistura níveis de abstração: atividades como 'Receber Solicitação de Cancelamento' (nível de negócio) coexistem com 'Desativar Acesso ao Serviço' (nível técnico/sistêmico), sem decomposição hierárquica adequada. Não há indicação de que 'Desativar Acesso' seja uma subrotina de um nível mais baixo, violando a separação de preocupações entre fluxo de negócios e detalhamento técnico.",
+      "elementos_relacionados": ["ativ-01", "ativ-09"],
+      "impacto_potencial": "Dificuldade de manutenção, reuso e comunicação com equipes de TI; risco de retrabalho ao tentar traduzir o modelo para especificações técnicas ou para mapeamento de APIs.",
+      "prioridade": "media",
+      "confiabilidade": "media",
+      "justificativa_confiabilidade": "A distinção entre níveis é inferida pela natureza descritiva das atividades ('Receber Solicitação' vs 'Desativar Acesso') e pela ausência de qualquer metadado indicando nível de abstração (ex: 'nivel': 'negocio' ou 'tecnico') no JSON, o que é consistente com a regra CBOK 4.6.4.",
+      "recomendacao": "Refatorar o modelo em dois níveis: (1) um fluxo de negócio macro com atividades de alto nível (ex: 'Processar Solicitação de Cancelamento'), e (2) um modelo técnico detalhado para 'Desativar Acesso ao Serviço', vinculado por chamada de subprocesso ou referência."
+    }
+  ],
+  "observacoes_metodologicas": [
+    "Ausência de métricas de desempenho (tempo, custo, taxa de retenção) impede avaliação quantitativa de eficiência e eficácia do processo.",
+    "Não há mapeamento de regras de negócio para gateways (ex: lógica de 'Há pendências financeiras?' depende de sistemas externos não documentados). Recomenda-se elicitar e registrar as fontes de dados e critérios de decisão para cada gateway.",
+    "Falta de definição de eventos intermediários (ex: timeout na resposta do cliente à proposta) compromete a análise de robustez do fluxo."
+  ]
+}

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://escritorio-bpm/as-is"
+             id="definitions_as_is">
+  <process id="proc_as_is" name="Solicitação de Cancelamento de Serviço" isExecutable="false">
+    <laneSet id="ls_01">
+      <lane id="lane-ator-01" name="Atendente de Retenção">
+        <flowNodeRef>ev-01</flowNodeRef>
+        <flowNodeRef>ativ-01</flowNodeRef>
+        <flowNodeRef>ativ-02</flowNodeRef>
+        <flowNodeRef>ativ-03</flowNodeRef>
+        <flowNodeRef>gw-01</flowNodeRef>
+        <flowNodeRef>ativ-04</flowNodeRef>
+        <flowNodeRef>ev-02</flowNodeRef>
+        <flowNodeRef>ativ-05</flowNodeRef>
+        <flowNodeRef>gw-02</flowNodeRef>
+        <flowNodeRef>ativ-06</flowNodeRef>
+        <flowNodeRef>ativ-07</flowNodeRef>
+        <flowNodeRef>ev-03</flowNodeRef>
+        <flowNodeRef>ativ-08</flowNodeRef>
+        <flowNodeRef>ativ-09</flowNodeRef>
+        <flowNodeRef>ativ-10</flowNodeRef>
+        <flowNodeRef>ev-04</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="ev-01" name="Solicitação de cancelamento recebida"/>
+    <userTask id="ativ-01" name="Receber Solicitação de Cancelamento"/>
+    <userTask id="ativ-02" name="Analisar Histórico e Motivos"/>
+    <userTask id="ativ-03" name="Fazer Proposta de Retenção"/>
+    <exclusiveGateway id="gw-01" name="Cliente aceitou proposta?"/>
+    <userTask id="ativ-05" name="Verificar Pendências Financeiras"/>
+    <exclusiveGateway id="gw-02" name="Há pendências financeiras?"/>
+    <userTask id="ativ-08" name="Solicitar Cancelamento Imediato"/>
+    <endEvent id="ev-02" name="Contrato mantido"/>
+    <endEvent id="ev-04" name="Cancelamento efetivado"/>
+    <serviceTask id="ativ-04" name="Alterar Condições do Plano"/>
+    <userTask id="ativ-06" name="Emitir Boleto de Quitação"/>
+    <serviceTask id="ativ-07" name="Agendar Cancelamento Automático"/>
+    <serviceTask id="ativ-09" name="Desativar Acesso ao Serviço"/>
+    <serviceTask id="ativ-10" name="Enviar Comprovante de Encerramento"/>
+    <endEvent id="ev-03" name="Cancelamento agendado"/>
+    <sequenceFlow id="sf-ev-01-ativ-01" sourceRef="ev-01" targetRef="ativ-01"/>
+    <sequenceFlow id="sf-ativ-01-ativ-02" sourceRef="ativ-01" targetRef="ativ-02"/>
+    <sequenceFlow id="sf-ativ-02-ativ-03" sourceRef="ativ-02" targetRef="ativ-03"/>
+    <sequenceFlow id="sf-ativ-03-gw-01" sourceRef="ativ-03" targetRef="gw-01"/>
+    <sequenceFlow id="sf-gw-01-ativ-04" name="Sim" sourceRef="gw-01" targetRef="ativ-04"><conditionExpression>Sim</conditionExpression></sequenceFlow>
+    <sequenceFlow id="sf-gw-01-ativ-05" name="Não" sourceRef="gw-01" targetRef="ativ-05"><conditionExpression>Não</conditionExpression></sequenceFlow>
+    <sequenceFlow id="sf-ativ-05-gw-02" sourceRef="ativ-05" targetRef="gw-02"/>
+    <sequenceFlow id="sf-gw-02-ativ-06" name="Sim" sourceRef="gw-02" targetRef="ativ-06"><conditionExpression>Sim</conditionExpression></sequenceFlow>
+    <sequenceFlow id="sf-gw-02-ativ-08" name="Não" sourceRef="gw-02" targetRef="ativ-08"><conditionExpression>Não</conditionExpression></sequenceFlow>
+    <sequenceFlow id="sf-ativ-04-ev-02" sourceRef="ativ-04" targetRef="ev-02"/>
+    <sequenceFlow id="sf-ativ-06-ativ-07" sourceRef="ativ-06" targetRef="ativ-07"/>
+    <sequenceFlow id="sf-ativ-07-ev-03" sourceRef="ativ-07" targetRef="ev-03"/>
+    <sequenceFlow id="sf-ativ-08-ativ-09" sourceRef="ativ-08" targetRef="ativ-09"/>
+    <sequenceFlow id="sf-ativ-09-ativ-10" sourceRef="ativ-09" targetRef="ativ-10"/>
+    <sequenceFlow id="sf-ativ-10-ev-04" sourceRef="ativ-10" targetRef="ev-04"/>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="proc_as_is"/>
+  </bpmndi:BPMNDiagram>
+</definitions>

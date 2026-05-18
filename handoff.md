@@ -71,7 +71,53 @@ O TO-BE não faz parte do escopo do sistema.
 - **Python**: 3.14.3
 - **Implantação**: local primeiro, VPS após pipeline validado
 
-## Estado atual do projeto (2026-05-16 — sessão 6)
+## Estado atual do projeto (2026-05-18 — sessão 9)
+
+### Sessão 9 — Auditor CBOK, novos checks e validação com terceiro processo
+
+**Mudanças de infraestrutura:**
+- Pipeline e Hermes migrados de Anthropic/Haiku para Qwen API (qwen-plus, endpoint Aliyun). Custo zero.
+- `run-pipeline.sh` usa `QWEN_API_KEY` / `QWEN_BASE_URL` / `QWEN_MODEL`.
+- Áudio removido do escopo — pipeline aceita texto direto via `transcricao-final.txt`.
+
+**Auditor reescrito (05-auditor.md):**
+- Lean Six Sigma e ISO 9001 removidos.
+- Framework único: ABPMP BPM CBOK v4.0 Capítulo 4.
+- Novo arquivo de regras: `squads/escritorio-bpm-as-is/references/cbok-audit-rules.md`.
+- 6 categorias de achados: `Notacao_Ambigua`, `Incompletude_ARIS`, `Conflito_Ontologico`, `Desalinhamento_Hierarquico`, `Falha_Executabilidade`, `Desvio_Governanca`.
+- Campo `secao_cbok` adicionado a cada achado (substituiu `framework`).
+
+**Checkpoint BPMN — nova verificação 1j:**
+- Detecta elementos de fluxo sem `<flowNodeRef>` em nenhuma lane (serviceTasks órfãs).
+- Total: 10/10 verificações.
+- Limite de nome aumentado: 50 → 60 chars (6 palavras PT-BR cabem confortavelmente).
+- Script de exibição corrigido: `a.framework` → `a.secao_cbok`.
+
+**Modelador (03-modelador.md) — 3 regras novas:**
+- Ator externo que apenas dispara o processo → sem pool externo, sem collaboration.
+- `<startEvent>` não pode ser `sourceRef` de messageFlow (recebe, nunca envia).
+- Todo elemento de fluxo DEVE estar em `<flowNodeRef>` de uma lane, incluindo serviceTasks.
+
+**Run de validação `output/2026-05-18-022944/v1/` (Cancelamento de Serviço):**
+```
+✅ Step 01 — Elicitador       → elicitacao.json
+✅ Step 02 — Checkpoint       → aprovado
+✅ Step 03 — Modelador        → processo-as-is.bpmn
+✅ bpmn-layout.js             → processo-as-is-layout.bpmn
+✅ Step 04 — Checkpoint BPMN  → aprovado (10/10)
+✅ Step 05 — Auditor          → diagnostico-as-is.json (4 achados CBOK)
+✅ Step 06 — Checkpoint Audit → aprovado
+✅ Validado no Bizagi          → aprovado
+```
+Correções manuais aplicadas neste run: flowNodeRefs de serviceTasks adicionados, collaboration removida, `ativ-06` corrigida para userTask.
+
+**bpmn-rules.md — regras adicionadas:**
+- EndEvent na mesma lane da última atividade (cada caminho terminal = endEvent próprio na lane correta).
+- Seção 4.3 (handoff de lane) documentada.
+
+---
+
+## Estado anterior do projeto (2026-05-16 — sessão 6)
 
 ### Pipeline AS-IS — estável e validado com segundo processo
 
@@ -125,9 +171,9 @@ Skills criadas em `skills/` (fonte canônica, versionada no git):
 
 Script `install-skills.bat` na raiz: copia de `skills/` para `~/.hermes/skills/local/`.
 
-**Atenção:** API keys no `.hermes/.env` são as antigas (revogadas). Atualizar antes da Fase 6.
+**API keys** no `.hermes/.env` atualizadas e validadas (sessão 8).
 
-**Problema identificado na sessão 6:** A skill `bpm-pipeline` chama `npx opensquad run escritorio-bpm-as-is`, mas esse comando não existe (registrado no spike 2). O pipeline hoje é executado pelo Claude Code via bash e scripts individuais. A skill precisa ser reescrita para refletir o fluxo real antes do teste ponta a ponta.
+**Sessão 8 — skill `bpm-pipeline` reescrita (v2.0.0):** Substituiu `npx opensquad run` pelo script `run-pipeline.sh`. O script orquestra os 6 steps via `claude -p` (steps 01, 03, 05) e bash/node puro (checkpoint 04). Permissão `+x` gravada via `git update-index` (ambiente Windows). Skill atualizada para `type: script`. Não executado — aguardando API keys.
 
 ### bpmn-layout.js — histórico de correções
 
@@ -195,8 +241,8 @@ Script `install-skills.bat` na raiz: copia de `skills/` para `~/.hermes/skills/l
 3. **Calha Inferior (Bottom Gutter) Inteligente**: Loops (back-edges) agora avaliam se a origem **ou o destino** estão na linha de baixo (Row 1). Se sim, o loop usa o piso da raia para retornar, sem cruzar e atropelar a atividade da linha de cima.
 4. **Regra XML Reajustada (`03-modelador.md`)**: Instrução de ordenação revertida para declarar fluxos com MessageFlow **primeiro**. No algoritmo DFS, isso as joga para o fundo da pilha topológica, casando perfeitamente com a nova regra de Border Magnetism.
 
-**Pendente — validação final no Bizagi:**
-Validado no bpmn.io (sessão 4). Import no Bizagi ainda pendente.
+**Validação visual completa:**
+Validado no bpmn.io (sessão 4) e import no Bizagi confirmado (sessão 8).
 
 ### Agentes — melhorias aplicadas na sessão 3
 
@@ -254,12 +300,12 @@ Validado no bpmn.io (sessão 4). Import no Bizagi ainda pendente.
 **Fase 5 — Validação Bizagi**
 - [x] Corrigir bugs de compatibilidade no `bpmn-layout.js` (concluído em sessões 2, 3, 4 e 6)
 - [x] Validar no bpmn.io (sessão 4 — Message Start Event, lanes, timer, loop confirmados)
-- [ ] Validar import no Bizagi (pendente)
+- [x] Validar import no Bizagi (concluído — sessão 8)
 
 **Fase 6 — Teste ponta a ponta (local)**
-- [ ] Atualizar API keys no `.hermes/.env` (Anthropic + OpenAI — as atuais estão revogadas)
-- [ ] Reescrever skill `bpm-pipeline`: substituir `npx opensquad run` pelo fluxo real via Claude Code
-- [ ] Gravar reunião simulada, enviar pelo Telegram, receber BPMN
+- [x] Atualizar API keys no `.hermes/.env` (Anthropic + OpenAI — concluído e validado, sessão 8)
+- [x] Reescrever skill `bpm-pipeline`: substituir `npx opensquad run` pelo `run-pipeline.sh` (sessão 8)
+- [ ] Gravar reunião simulada, enviar pelo Telegram, receber BPMN (iniciado — sessão 8)
 
 **Fase 7 — Subir para VPS**
 - [ ] Somente após fase 6 validada
@@ -283,14 +329,20 @@ Validado no bpmn.io (sessão 4). Import no Bizagi ainda pendente.
 | bpmn-layout.js — localLoopY dinâmico: evita atravessar caixa quando row=0 próximo ao teto | Concluído (sessão 5) |
 | bpmn-layout.js — MessageFlow nó→Pool detecta obstáculo abaixo e desvia pela esquerda | Concluído (sessão 5) |
 | 04-checkpoint-bpmn — verificação 1i: task zumbi sem sequenceFlow de saída | Concluído (sessão 5) |
-| 05-auditor — validar estados finais semanticamente | Pendente |
-| Validar import no Bizagi | Pendente |
+| 05-auditor — reescrito para CBOK v4.0 exclusivo | Concluído (sessão 9) |
+| cbok-audit-rules.md — criado com 6 dimensões CBOK | Concluído (sessão 9) |
+| 04-checkpoint — verificação 1j: elementos sem flowNodeRef | Concluído (sessão 9) |
+| 04-checkpoint — limite nome 50→60 chars | Concluído (sessão 9) |
+| 03-modelador — proibição startEvent como sourceRef de messageFlow | Concluído (sessão 9) |
+| 03-modelador — proibição pool externo para ator sem atividades | Concluído (sessão 9) |
+| 03-modelador — flowNodeRef obrigatório para todos os elementos incl. serviceTask | Concluído (sessão 9) |
+| Validar import no Bizagi (Cancelamento de Serviço) | Concluído (sessão 9) |
 | bpmn-layout.js — port-aware routing (fundo/topo por posição do nó) | Concluído (sessão 6) |
 | bpmn-layout.js — COL_PAD aumentado para 40 (fôlego para renderizadores) | Concluído (sessão 6) |
 | 03-modelador.md — regra 5 corrigida: timer antes do gateway, não na branch "Não" | Concluído (sessão 6) |
 | run 2026-05-16-000004 — pipeline AS-IS completo (steps 01-06) | Concluído (sessão 7) |
-| skill bpm-pipeline — reescrever para o fluxo real (sem npx opensquad run) | Pendente |
-| Hermes — atualizar API keys no .hermes/.env (Anthropic + OpenAI) | Pendente |
+| skill bpm-pipeline — reescrever para o fluxo real (sem npx opensquad run) | Concluído (sessão 8) |
+| Hermes — atualizar API keys no .hermes/.env (Anthropic + OpenAI) | Concluído (sessão 8) |
 | Fase 6 — teste ponta a ponta (Telegram → transcrição → BPMN) | Pendente |
 
 ## Arquitetura dos agentes (estado atual dos prompts)
@@ -407,8 +459,8 @@ Limitação conhecida: 23 colunas no diagrama atual refletem o modelo linear do 
 | bpmn-layout.js — Border Magnetism afunda atividades com MessageFlow | Implementado (sessão 7) |
 | bpmn-layout.js — Gutter Routing p/ SequenceFlow (via calha direita) | Implementado (sessão 7) |
 | bpmn-layout.js — Back-edge inteligente (usa piso se origem ou destino em Row 1) | Implementado (sessão 7) |
-| skill bpm-pipeline — reescrever sem npx opensquad run | Pendente |
-| Validar import visual no Bizagi | Pendente |
+| skill bpm-pipeline — reescrever sem npx opensquad run | Concluído (sessão 8) |
+| Validar import visual no Bizagi | Concluído (sessão 8) |
 
 ## Achados do Auditor (run 2026-05-16-000001)
 

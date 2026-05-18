@@ -1,0 +1,8 @@
+Texto para Teste: Processo de Solicitação de Cancelamento de Serviço
+O processo é disparado assim que o cliente entra no chat de atendimento e solicita o cancelamento do seu plano. O atendente de retenção recebe o caso e analisa o histórico de uso e os motivos alegados pelo cliente.
+
+Em seguida, o atendente faz uma proposta de desconto ou upgrade de plano para tentar reter o cliente. Se o cliente aceitar a proposta de retenção, o atendente altera as condições do plano no sistema, confirma os novos benefícios e encerra o atendimento mantendo o contrato ativo.
+
+Se o cliente recusar a proposta e insistir no cancelamento, o atendente verifica se existem faturas pendentes ou multas contratuais por quebra de fidelidade. Caso haja alguma pendência financeira, o atendente emite o boleto de quitação, envia para o e-mail do cliente e o sistema agenda o cancelamento automático para a data de vencimento do boleto.
+
+Caso não haja nenhuma pendência financeira ou multa, o atendente solicita o cancelamento imediato e o sistema desativa o acesso do cliente ao serviço de forma instantânea, enviando o comprovante de encerramento por e-mail e finalizando o processo.

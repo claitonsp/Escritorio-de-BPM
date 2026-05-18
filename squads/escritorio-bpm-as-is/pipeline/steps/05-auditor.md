@@ -4,46 +4,68 @@ outputFile: diagnostico-as-is.json
 execution: inline
 ---
 
-Você receberá o JSON de elicitação de um processo AS-IS. Analise-o sob três frameworks e retorne um JSON estruturado de diagnóstico.
+Analise o JSON de elicitação usando exclusivamente as regras de auditoria baseadas no CBOK v4.0 contidas no arquivo `squads/escritorio-bpm-as-is/references/cbok-audit-rules.md` e retorne um JSON de diagnóstico. Retorne APENAS o JSON de diagnóstico, sem explicações antes ou depois. Comece com { e termine com }.
 
 ## Input
 
 {{input}}
 
-## Frameworks de análise
+## Regras de Auditoria CBOK v4.0
 
-### 1. ABPMP BPM CBOK v4.0
-Consulte sua skill `bpm-auditoria` para fundamentar os achados com base nas melhores práticas documentadas no CBOK.
-Avalie: qualidade dos pontos de handoff, completude dos controles em gateways, presença de pontos de medição, tratamento de exceções, rastreabilidade de documentos, e lacunas de especificação (fluxos indefinidos).
+Você deve avaliar o processo elicitado sob a ótica exclusiva do **ABPMP BPM CBOK v4.0 (Capítulo 4)**, estruturado de acordo com as seguintes dimensões e validações detalhadas no arquivo de referência `cbok-audit-rules.md`:
 
-### 2. Lean Six Sigma — Desperdícios TIMWOOD
-Avalie os oito desperdícios no contexto do processo:
-- **Transporte**: handoffs desnecessários entre atores
-- **Inventário**: filas de espera implícitas (atividades de confirmação passiva)
-- **Movimento**: retrabalho manual que poderia ser automatizado
-- **Espera**: atividades bloqueadas aguardando resposta externa
-- **Superprodução**: atividades executadas além do necessário para o próximo passo
-- **Superprocessamento**: etapas que geram mais trabalho do que valor
-- **Defeitos**: caminhos de não-conformidade sem tratamento definido
-- **Subutilização de talento**: tarefas manuais repetitivas executadas por atores com capacidade técnica superior
+1. **Qualificação como Modelo Formal (Seção 4.1.3):**
+   - Validar se o AS-IS elicitado utiliza notação padronizada, ícones bem definidos e de forma precisa, sem ambiguidades.
+   - Caso falhe nestes critérios, classifique como `Notacao_Ambigua`.
 
-### 3. ISO 9001:2015
-Avalie: rastreabilidade de registros, tratamento de não-conformidades (especialmente caminhos de exceção no processo), evidências de competência dos atores, controle de documentos e dados externos (fornecedores), e critérios de aceitação explícitos.
+2. **Completude das 5 Dimensões ARIS (Seção 4.2.5):**
+   - Verificar a presença e integridade de:
+     - *Organização:* Atores, papéis e lanes associados às atividades.
+     - *Funções:* Atividades operacionais sequenciadas.
+     - *Dados:* Entradas e saídas de dados/documentos para cada atividade.
+     - *Entregáveis:* Produtos, serviços ou valor gerado ao final de cada fluxo.
+     - *Controle:* Gateways, eventos e sequenciamento lógico.
+   - Qualquer omissão de dimensões deve gerar um achado da categoria `Incompletude_ARIS`.
 
-## Regras de análise
+3. **Ontologia e Consistência Hierárquica (Seção 4.6):**
+   - *Ontologia (Seção 4.6.1):* Impedir conflitos de nomes. Não ter dois nomes para o mesmo item (sinônimos não mapeados), nem o mesmo nome para itens diferentes (homônimos). Categoria: `Conflito_Ontologico`.
+   - *Níveis de Abstração (Seção 4.6.4):* O modelo deve respeitar o alinhamento de níveis (Corporativo, Negócio, Workflow, Passos). É proibido misturar passos microscópicos de sistemas em fluxos de negócios macro. Categoria: `Desalinhamento_Hierarquico`.
 
-1. Cada achado deve citar pelo menos um elemento do JSON (ativ-XX, gw-XX, ev-XX, rn-XX, sis-XX)
-2. Confiabilidade alta = evidência direta na transcrição. Confiabilidade média = inferência estrutural razoável. Confiabilidade baixa = requer coleta de dados adicionais
-3. Prioridade alta = impacto direto em risco operacional ou conformidade. Média = impacto em eficiência. Baixa = oportunidade de melhoria incremental
-4. Não invente dados quantitativos ausentes. Se o achado depende de tempo, custo ou volume, registre como hipótese com confiabilidade baixa
-5. Identifique métricas do processo deriváveis do JSON: número de handoffs (mudanças de ator entre atividades consecutivas), atividades manuais (userTask), atividades automáticas (serviceTask), gateways, caminhos sem endEvent definido
+4. **Alinhamento da Arquitetura de Negócio (Seção 4.7):**
+   - Garantir a rastreabilidade das atividades até o nível das responsabilidades operacionais (lanes de atores internos). Se houver atividades órfãs ou desalinhamento com o papel do executor, sinalize na categoria `Desalinhamento_Hierarquico`.
 
-## Schema de saída obrigatório
+5. **Executabilidade e Lógica de Fluxo (Seção 4.11):**
+   - *Validação Lógica:* Garantir fluxo livre de tokens. Sem deadlocks, sem caminhos órfãos sem saída, e sem loops descontrolados/infinitos. Loops devem ter condições de retorno controladas por gateways de decisão explícitos. Categoria: `Falha_Executabilidade`.
+
+6. **Governação e Convenções do Repositório (Seção 4.2.8):**
+   - Validar se a estrutura segue as convenções semânticas e o ciclo de vida adequado do modelo. Categoria: `Desvio_Governanca`.
+
+## Proibições Absolutas
+
+Em conformidade rigorosa com o arquivo de regras:
+1. **NUNCA invente dados quantitativos ou qualitativos** que não estejam expressos no JSON de entrada. Se métricas de tempo, custo ou volumes de processo estiverem ausentes, classifique como `Incompletude_ARIS` e configure a confiabilidade como `baixa`.
+2. **NUNCA misture AS-IS com TO-BE**. Concentre-se exclusivamente em diagnosticar e auditar o fluxo atual como ele se encontra.
+3. **NUNCA utilize outros frameworks** ou abordagens além do CBOK v4.0. Lean Six Sigma e ISO 9001 estão estritamente banidos.
+
+## Classificação de Atributos dos Achados
+
+- **Confiabilidade:**
+  - `alta`: Baseada em evidência direta e explícita fornecida pelo JSON de entrada.
+  - `media`: Baseada em inferência lógica forte e coerente.
+  - `baixa`: Baseada em lacunas de dados ou informações que exigem coleta adicional.
+- **Prioridade:**
+  - `alta`: Riscos operacionais severos, falhas de conformidade crítica ou interrupção do fluxo de trabalho.
+  - `media`: Problemas de alinhamento hierárquico, conflitos de ontologia e handoffs ineficientes.
+  - `baixa`: Pequenos desvios de governança de nomenclatura ou melhorias incrementais.
+
+## Schema de Saída (JSON)
+
+Você deve retornar estritamente o JSON seguindo o schema abaixo:
 
 ```json
 {
   "processo": "nome do processo",
-  "resumo_executivo": "parágrafo de 3 a 5 frases sintetizando os achados mais críticos",
+  "resumo_executivo": "3 a 5 frases sobre os achados críticos sob a ótica do CBOK v4.0",
   "metricas_estruturais": {
     "total_atividades": 0,
     "atividades_manuais": 0,
@@ -57,22 +79,20 @@ Avalie: rastreabilidade de registros, tratamento de não-conformidades (especial
   "achados": [
     {
       "id": "ach-01",
-      "framework": "CBOK | Lean | ISO9001",
-      "categoria": "handoff | controle | rastreabilidade | desperdicio_espera | desperdicio_defeito | desperdicio_superprocessamento | desperdicio_movimento | nao_conformidade | lacuna_especificacao | automacao_potencial",
-      "descricao": "descrição clara do problema ou risco identificado",
-      "elementos_relacionados": ["ativ-XX"],
-      "impacto_potencial": "descrição do impacto se não tratado",
+      "secao_cbok": "ex: 4.2.5 — Dimensão Dados",
+      "categoria": "Notacao_Ambigua | Incompletude_ARIS | Conflito_Ontologico | Desalinhamento_Hierarquico | Falha_Executabilidade | Desvio_Governanca",
+      "descricao": "problema ou risco identificado sob a ótica da seção correspondente do CBOK",
+      "elementos_relacionados": ["ativ-XX", "gw-XX"],
+      "impacto_potencial": "impacto se não tratado no repositório de processos",
       "prioridade": "alta | media | baixa",
       "confiabilidade": "alta | media | baixa",
-      "justificativa_confiabilidade": "por que esta confiabilidade foi atribuída",
-      "recomendacao": "ação concreta recomendada para o TO-BE"
+      "justificativa_confiabilidade": "justificativa detalhada com base na presença/ausência de dados no input",
+      "recomendacao": "ação concreta de melhoria ou correção focada no redesenho TO-BE"
     }
   ],
   "observacoes_metodologicas": [
-    "limitações da análise dado que os dados vêm de uma única entrevista",
-    "dados recomendados para coleta em aprofundamento"
+    "limitações da análise",
+    "dados adicionais recomendados para coleta e validação"
   ]
 }
 ```
-
-Retorne APENAS o JSON. Comece com { e termine com }.

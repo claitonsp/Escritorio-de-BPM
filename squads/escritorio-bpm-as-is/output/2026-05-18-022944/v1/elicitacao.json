@@ -1,0 +1,199 @@
+{
+  "processo": "Solicitação de Cancelamento de Serviço",
+  "atores": [
+    {
+      "id": "ator-01",
+      "nome": "Atendente de Retenção",
+      "tipo": "interno"
+    },
+    {
+      "id": "ator-02",
+      "nome": "Cliente",
+      "tipo": "externo"
+    },
+    {
+      "id": "sis-01",
+      "nome": "Sistema de Gestão de Contratos",
+      "tipo": "outro"
+    }
+  ],
+  "atividades": [
+    {
+      "id": "ativ-01",
+      "nome_bpmn": "Receber Solicitação de Cancelamento",
+      "descricao": "Atendente recebe solicitação de cancelamento via chat de atendimento",
+      "ator_responsavel": "ator-01",
+      "sistema": null,
+      "task_type": "userTask"
+    },
+    {
+      "id": "ativ-02",
+      "nome_bpmn": "Analisar Histórico e Motivos",
+      "descricao": "Atendente analisa histórico de uso e motivos alegados pelo cliente",
+      "ator_responsavel": "ator-01",
+      "sistema": null,
+      "task_type": "userTask"
+    },
+    {
+      "id": "ativ-03",
+      "nome_bpmn": "Fazer Proposta de Retenção",
+      "descricao": "Atendente elabora e apresenta proposta de desconto ou upgrade de plano",
+      "ator_responsavel": "ator-01",
+      "sistema": null,
+      "task_type": "userTask"
+    },
+    {
+      "id": "ativ-04",
+      "nome_bpmn": "Alterar Condições do Plano",
+      "descricao": "Atendente atualiza as condições contratuais no sistema após aceite da proposta",
+      "ator_responsavel": "ator-01",
+      "sistema": "sis-01",
+      "task_type": "serviceTask"
+    },
+    {
+      "id": "ativ-05",
+      "nome_bpmn": "Verificar Pendências Financeiras",
+      "descricao": "Atendente confere existência de faturas pendentes ou multas contratuais",
+      "ator_responsavel": "ator-01",
+      "sistema": null,
+      "task_type": "userTask"
+    },
+    {
+      "id": "ativ-06",
+      "nome_bpmn": "Emitir Boleto de Quitação",
+      "descricao": "Sistema gera e emite boleto para quitação de pendências financeiras",
+      "ator_responsavel": "sis-01",
+      "sistema": "sis-01",
+      "task_type": "serviceTask"
+    },
+    {
+      "id": "ativ-07",
+      "nome_bpmn": "Agendar Cancelamento Automático",
+      "descricao": "Sistema agenda o cancelamento para data de vencimento do boleto",
+      "ator_responsavel": "sis-01",
+      "sistema": "sis-01",
+      "task_type": "serviceTask"
+    },
+    {
+      "id": "ativ-08",
+      "nome_bpmn": "Solicitar Cancelamento Imediato",
+      "descricao": "Atendente aciona cancelamento imediato quando não há pendências",
+      "ator_responsavel": "ator-01",
+      "sistema": null,
+      "task_type": "userTask"
+    },
+    {
+      "id": "ativ-09",
+      "nome_bpmn": "Desativar Acesso ao Serviço",
+      "descricao": "Sistema desativa instantaneamente o acesso do cliente ao serviço",
+      "ator_responsavel": "sis-01",
+      "sistema": "sis-01",
+      "task_type": "serviceTask"
+    },
+    {
+      "id": "ativ-10",
+      "nome_bpmn": "Enviar Comprovante de Encerramento",
+      "descricao": "Sistema envia comprovante de encerramento por e-mail",
+      "ator_responsavel": "sis-01",
+      "sistema": "sis-01",
+      "task_type": "serviceTask"
+    }
+  ],
+  "eventos": [
+    {
+      "id": "ev-01",
+      "tipo": "start",
+      "nome_bpmn": "Solicitação de cancelamento recebida",
+      "descricao": "Cliente inicia processo solicitando cancelamento via chat"
+    },
+    {
+      "id": "ev-02",
+      "tipo": "end",
+      "nome_bpmn": "Contrato mantido",
+      "descricao": "Processo finalizado com retenção bem-sucedida"
+    },
+    {
+      "id": "ev-03",
+      "tipo": "end",
+      "nome_bpmn": "Cancelamento agendado",
+      "descricao": "Processo finalizado com cancelamento programado para data futura"
+    },
+    {
+      "id": "ev-04",
+      "tipo": "end",
+      "nome_bpmn": "Cancelamento efetivado",
+      "descricao": "Processo finalizado com desativação imediata do serviço"
+    }
+  ],
+  "gateways": [
+    {
+      "id": "gw-01",
+      "tipo": "exclusive",
+      "nome_bpmn": "Cliente aceitou proposta?",
+      "descricao": "Decisão baseada na resposta do cliente à proposta de retenção",
+      "condicoes": [
+        {
+          "label": "Sim",
+          "descricao": "Cliente aceita desconto ou upgrade",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-04"
+        },
+        {
+          "label": "Não",
+          "descricao": "Cliente recusa proposta e insiste em cancelar",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-05"
+        }
+      ]
+    },
+    {
+      "id": "gw-02",
+      "tipo": "exclusive",
+      "nome_bpmn": "Há pendências financeiras?",
+      "descricao": "Verificação de faturas pendentes ou multas contratuais",
+      "condicoes": [
+        {
+          "label": "Sim",
+          "descricao": "Existe pelo menos uma pendência financeira",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-06"
+        },
+        {
+          "label": "Não",
+          "descricao": "Não há pendências financeiras nem multas",
+          "destino_tipo": "atividade",
+          "destino_id": "ativ-08"
+        }
+      ]
+    }
+  ],
+  "sistemas": [
+    {
+      "id": "sis-01",
+      "nome": "Sistema de Gestão de Contratos",
+      "tipo": "outro"
+    }
+  ],
+  "regras_de_negocio": [
+    {
+      "id": "rn-01",
+      "descricao": "Se cliente aceitar proposta de retenção, contrato é mantido com novas condições",
+      "atividade_relacionada": "ativ-04"
+    },
+    {
+      "id": "rn-02",
+      "descricao": "Cancelamento só pode ser agendado após quitação de todas as pendências financeiras",
+      "atividade_relacionada": "ativ-07"
+    },
+    {
+      "id": "rn-03",
+      "descricao": "Cancelamento imediato ocorre apenas quando não há pendências financeiras nem multas contratuais",
+      "atividade_relacionada": "ativ-09"
+    }
+  ],
+  "observacoes": [
+    "Cliente é sempre ator externo, mesmo que tenha vínculo contratual",
+    "Sistema de Gestão de Contratos executa tarefas automáticas sem intervenção humana após acionamento",
+    "Envio de e-mails (boleto e comprovante) é feito de forma automática pelo sistema"
+  ]
+}

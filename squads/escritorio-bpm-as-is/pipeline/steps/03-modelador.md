@@ -4,230 +4,120 @@ outputFile: processo-as-is.bpmn
 execution: inline
 ---
 
-Você é um especialista em modelagem de processos com profundo conhecimento de BPMN 2.0. Sua responsabilidade é transformar dados estruturados de elicitação em XML BPMN 2.0 válido e completo.
-
-Consulte sua skill `bpm-modelagem` para sanar dúvidas conceituais sobre o uso de elementos BPMN 2.0 (eventos, comportas, pools, etc). As regras abaixo definem as convenções específicas de estruturação XML da pipeline, que se sobrepõem à teoria quando houver conflito de implementação.
+Transforme o JSON de elicitação em XML BPMN 2.0 válido. Siga rigorosamente as regras em `squads/escritorio-bpm-as-is/references/bpmn-rules.md`. Retorne APENAS o XML. A primeira linha DEVE ser `<?xml version="1.0" encoding="UTF-8"?>` e a última `</definitions>`.
 
 ## Input
 
 {{input}}
 
-## Convenções obrigatórias
+## Regras obrigatórias
 
-### 1. Atores internos vs externos — regra fundamental
+### 1. Atores internos vs externos
 
-Analise o campo `tipo` de cada ator:
+- `tipo: "interno"` → **Lane** dentro do Pool principal (`proc_as_is`)
+- `tipo: "externo"` → **Pool separado (Black Box)** — NUNCA uma Lane
+- `tipo: "sistema"` → sem Lane/Pool; representado como `<serviceTask>` na lane do responsável
 
-- `tipo: "interno"` → recebe **Lane** dentro do Pool principal (`proc_as_is`)
-- `tipo: "externo"` → recebe **Pool separado (Black Box)** — NUNCA uma Lane
-- `tipo: "sistema"` → NÃO recebe Lane nem Pool; é representado como `<serviceTask>` na lane do humano responsável
+Quando houver ator externo, adicione `<collaboration>` antes do `<process>` com `<participant>` para empresa e externos, e `<messageFlow>` para interações cross-pool.
 
-**Quando existir pelo menos um ator externo**, a estrutura raiz muda:
-- Adicione um elemento `<collaboration>` antes do `<process>`
-- Dentro da collaboration, declare um `<participant>` para a empresa (apontando para `proc_as_is`) e um `<participant isExecutable="false">` para cada ator externo
-- Use `<messageFlow>` para conectar atividades internas que interagem com atores externos
+### 2. Lanes — somente atores internos com atividades
 
-Estrutura quando há atores externos:
-```xml
-<collaboration id="collab_01">
-  <participant id="part-empresa" name="[nome da empresa ou processo]" processRef="proc_as_is"/>
-  <participant id="part-[id-ator]" name="[nome do ator externo]" isExecutable="false"/>
-  <!-- messageFlows -->
-  <messageFlow id="mf-[origem]-[destino]" sourceRef="[id-atividade]" targetRef="part-[id-ator]"/>
-</collaboration>
-<process id="proc_as_is" name="..." isExecutable="false">
-  <!-- apenas atores internos aqui -->
-</process>
-```
-
-### 2. Lanes — somente para atores internos com atividades
-
-- Crie lane apenas para atores com `tipo: "interno"` que possuem ao menos uma atividade atribuída
-- **Nunca crie lane vazia** (sem nenhum `<flowNodeRef>`)
-- Atores externos NÃO aparecem como lane
+- Nunca crie lane vazia
+- Todo elemento de fluxo (`startEvent`, `endEvent`, `intermediateCatchEvent`, `userTask`, `serviceTask`, `scriptTask`, `exclusiveGateway`) DEVE estar em `<flowNodeRef>` de uma lane
+- `startEvent` e `endEvent` vão na lane do ator com a atividade adjacente
 
 ### 3. Tipos de tarefa
 
-Use o campo `task_type` do JSON de entrada como fonte de verdade:
+Use o campo `task_type` do JSON: `"userTask"` → `<userTask>`, `"serviceTask"` → `<serviceTask>`, `"scriptTask"` → `<scriptTask>`. Se ausente: humano → `<userTask>`, sistema (`sis-XX`) → `<serviceTask>`.
 
-| `task_type`    | Tag BPMN            | Quando usar |
-|---|---|---|
-| `"userTask"`   | `<userTask>`        | Humano executa manualmente (análise, aprovação, contato) |
-| `"serviceTask"`| `<serviceTask>`     | Sistema executa sem intervenção humana no momento (integração ERP, geração de NF, e-mail automático) |
-| `"scriptTask"` | `<scriptTask>`      | Regra automática do motor de processo (raro no AS-IS) |
+### 4. Gateways — rótulos obrigatórios
 
-Se `task_type` estiver ausente no JSON: use `<userTask>` para `ator_responsavel` humano e `<serviceTask>` para `ator_responsavel` do tipo sistema (`sis-XX`).
+Todos exclusivos: `<exclusiveGateway>`. Cada `<sequenceFlow>` saindo de gateway DEVE ter `name=` igual ao label (`"Sim"` ou `"Não"`) e `<conditionExpression>`.
 
-### 4. Gateways — rótulos obrigatórios nas saídas
-
-Todos os gateways são exclusivos: use `<exclusiveGateway>`.
-
-O JSON de entrada tem `condicoes` com `label`, `destino_tipo` e `destino_id`. Mapeie assim:
-
-| `destino_tipo` | O que gerar |
-|---|---|
-| `"atividade"` | `<sequenceFlow>` com `targetRef="[destino_id]"` |
-| `"evento_fim"` | `<sequenceFlow>` → `<endEvent>` com nome do estado final |
-| `"loop"` | `<sequenceFlow>` de volta com `targetRef="[destino_id]"` (atividade anterior) |
-
-**Regra crítica**: cada `<sequenceFlow>` saindo de um gateway DEVE ter `name=` igual ao `label` da condição (`"Sim"` ou `"Não"`).
-
-Exemplo:
-```xml
-<sequenceFlow id="sf-gw01-ativ02" name="Sim" sourceRef="gw-01" targetRef="ativ-02">
-  <conditionExpression>Sim</conditionExpression>
-</sequenceFlow>
-<sequenceFlow id="sf-gw01-ativ01" name="Não" sourceRef="gw-01" targetRef="ativ-01">
-  <conditionExpression>Não</conditionExpression>
-</sequenceFlow>
-```
-
-**Todo gateway divergente deve ter TODOS os ramos definidos** — nenhum caminho pode ficar sem destino.
-
-**Gateway convergente obrigatório:** sempre que um gateway exclusivo divergir em dois ou mais caminhos que se reúnem numa tarefa comum posterior, insira um `<exclusiveGateway>` sem rótulo como ponto de convergência. Exemplo:
+Gateway convergente obrigatório: quando caminhos alternativos se reunem em tarefa comum, insira `<exclusiveGateway>` sem rótulo como ponto de convergência antes da tarefa.
 
 ```xml
-<!-- ERRADO — convergência implícita: duas setas chegando direto em ativ-05 -->
-<sequenceFlow sourceRef="gw-01" targetRef="ativ-03" name="Sim"/>
-<sequenceFlow sourceRef="gw-01" targetRef="ativ-05" name="Não"/>
-<sequenceFlow sourceRef="ativ-03" targetRef="ativ-05"/>
-
-<!-- CORRETO — gateway convergente antes da tarefa comum -->
-<sequenceFlow sourceRef="gw-01" targetRef="ativ-03" name="Sim"/>
-<sequenceFlow sourceRef="gw-01" targetRef="gw-conv-01" name="Não"/>
-<sequenceFlow sourceRef="ativ-03" targetRef="gw-conv-01"/>
+<sequenceFlow id="sf-gw01-ativ03" name="Sim" sourceRef="gw-01" targetRef="ativ-03"><conditionExpression>Sim</conditionExpression></sequenceFlow>
+<sequenceFlow id="sf-gw01-gw-conv-01" name="Não" sourceRef="gw-01" targetRef="gw-conv-01"><conditionExpression>Não</conditionExpression></sequenceFlow>
+<sequenceFlow id="sf-ativ03-gw-conv-01" sourceRef="ativ-03" targetRef="gw-conv-01"/>
 <exclusiveGateway id="gw-conv-01"/>
-<sequenceFlow sourceRef="gw-conv-01" targetRef="ativ-05"/>
+<sequenceFlow id="sf-gw-conv-01-ativ05" sourceRef="gw-conv-01" targetRef="ativ-05"/>
 ```
 
-### 5. Loops — Sequence Flow de retorno com controle obrigatório
+### 5. Loops — timer obrigatório ANTES do gateway
 
-Quando `destino_tipo == "loop"`, gere um `<sequenceFlow>` apontando de volta para `destino_id`. Não gere End Event.
+Quando `destino_tipo == "loop"`, gere `<intermediateCatchEvent>` com `<timerEventDefinition>` como passo sequencial ANTES do gateway (não na branch "Não"):
 
-End Events (`<endEvent>`) são gerados apenas quando `destino_tipo == "evento_fim"`, indicando encerramento definitivo do processo naquele caminho.
-
-**Controle de loop obrigatório:** Todo loop de retorno deve incluir um `<intermediateCatchEvent>` com `<timerEventDefinition>`. O timer é um **passo sequencial ANTES do gateway de decisão**, não uma branch do "Não". Isso garante que a espera ocorra antes da verificação, e não após a decisão negativa.
-
-**Padrão correto — timer ANTES do gateway:**
-
-```
-[atividade-de-ação] → [timer] → [gateway-de-decisão] → Sim → [próxima atividade]
-                                                       ↑          Não → (back-edge para atividade-de-ação)
-```
-
-Estrutura obrigatória:
 ```xml
-<!-- Timer como passo sequencial entre a atividade de ação e o gateway -->
-<intermediateCatchEvent id="timer-[gw-id]" name="Aguardar 24h">
-  <timerEventDefinition id="ted-[gw-id]">
-    <timeDuration xsi:type="tFormalExpression">PT24H</timeDuration>
-  </timerEventDefinition>
+<intermediateCatchEvent id="timer-gw-01" name="Aguardar 24h">
+  <timerEventDefinition><timeDuration xsi:type="tFormalExpression">PT24H</timeDuration></timerEventDefinition>
 </intermediateCatchEvent>
-<sequenceFlow id="sf-[ativ-acao]-timer" sourceRef="[ativ-acao-id]" targetRef="timer-[gw-id]"/>
-<sequenceFlow id="sf-timer-[gw-id]" sourceRef="timer-[gw-id]" targetRef="[gw-id]"/>
-
-<!-- Gateway de decisão: "Sim" avança, "Não" retorna à atividade de ação (back-edge) -->
-<sequenceFlow id="sf-[gw-id]-[destino-sim]" name="Sim" sourceRef="[gw-id]" targetRef="[destino-sim-id]">
-  <conditionExpression>Sim</conditionExpression>
-</sequenceFlow>
-<sequenceFlow id="sf-[gw-id]-[ativ-acao]" name="Não" sourceRef="[gw-id]" targetRef="[ativ-acao-id]">
-  <conditionExpression>Não</conditionExpression>
-</sequenceFlow>
+<sequenceFlow id="sf-ativ01-timer" sourceRef="ativ-01" targetRef="timer-gw-01"/>
+<sequenceFlow id="sf-timer-gw01" sourceRef="timer-gw-01" targetRef="gw-01"/>
+<sequenceFlow id="sf-gw01-ativ02" name="Sim" sourceRef="gw-01" targetRef="ativ-02"><conditionExpression>Sim</conditionExpression></sequenceFlow>
+<sequenceFlow id="sf-gw01-ativ01" name="Não" sourceRef="gw-01" targetRef="ativ-01"><conditionExpression>Não</conditionExpression></sequenceFlow>
 ```
 
-**Erro crítico a evitar:**
-```xml
-<!-- ERRADO — timer na branch "Não" do gateway: loop cego e layout quebrado -->
-<sequenceFlow name="Não" sourceRef="[gw-id]" targetRef="timer-[gw-id]"/>
-<sequenceFlow sourceRef="timer-[gw-id]" targetRef="[ativ-acao-id]"/>
+Adicione `timer-[gw-id]` no `<flowNodeRef>` da lane correta.
 
-<!-- CORRETO — timer antes do gateway, "Não" retorna diretamente à atividade -->
-<sequenceFlow sourceRef="[ativ-acao-id]" targetRef="timer-[gw-id]"/>
-<sequenceFlow sourceRef="timer-[gw-id]" targetRef="[gw-id]"/>
-<sequenceFlow name="Não" sourceRef="[gw-id]" targetRef="[ativ-acao-id]"/>
-```
+### 6. Message Flows — interações com externos
 
-Adicione o `timer-[gw-id]` na `<lane>` correta (mesma lane da atividade de ação). Se o JSON definir um intervalo explícito, use-o no lugar de `PT24H`.
+Use `<messageFlow>` na `<collaboration>` para cruzar fronteira entre pools. NUNCA `<sequenceFlow>` cross-pool.
+- Saída interna → externo: `sourceRef="[id-atividade]"` `targetRef="part-[ator-externo]"`
+- Entrada externo → interno: `sourceRef="part-[ator-externo]"` `targetRef="[id-atividade]"`
 
-### 6. Message Flows — interações com atores externos
+**Ator externo que apenas dispara o processo (sem atividades modeladas):** NÃO crie pool externo nem `<collaboration>`. Use apenas o `<startEvent>` com nome descritivo. Só crie pool externo quando o ator externo tiver interações explícitas de ida E volta documentadas no JSON.
 
-Para cada atividade interna que envia ou recebe informação de um ator externo, adicione um `<messageFlow>` na `<collaboration>`. Nunca use `<sequenceFlow>` para cruzar a fronteira entre pools.
+**Direção obrigatória do messageFlow:**
+- Externo envia para interno → `sourceRef="part-[ator]"` `targetRef="[ev ou ativ interno]"`
+- Interno envia para externo → `sourceRef="[ativ interno]"` `targetRef="part-[ator]"`
+- NUNCA conecte um `<startEvent>` como `sourceRef` de messageFlow (startEvent não envia mensagem, recebe).
 
-- Saída da empresa para externo: `sourceRef="[id-atividade-interna]"` e `targetRef="part-[id-ator-externo]"`
-- Entrada do externo para empresa: `sourceRef="part-[id-ator-externo]"` e `targetRef="[id-atividade-interna]"`
+### 7. Atributo `name=`
 
-Atividades que tipicamente interagem com fornecedor: solicitar cotações, enviar pedido, confirmar recebimento, realizar follow-up.
+Use sempre `nome_bpmn` do JSON. Nunca use `descricao` como `name=`.
 
-**Erro crítico a evitar:**
-```xml
-<!-- ERRADO — sequenceFlow cruzando pool: inválido BPMN 2.0 -->
-<sequenceFlow id="sf-ativ03-part-fornecedor" sourceRef="ativ-03" targetRef="part-fornecedor"/>
+### 8. Sequência
 
-<!-- CORRETO — messageFlow dentro da collaboration -->
-<messageFlow id="mf-ativ03-part-fornecedor" sourceRef="ativ-03" targetRef="part-fornecedor"/>
-```
-Regra de detecção: se targetRef ou sourceRef de um <sequenceFlow> for o ID de um <participant>, você cometeu o erro acima. Revise antes de entregar.
+1. Comece pelo startEvent → primeira atividade
+2. Siga ordem lógica das descrições
+3. Handoff entre atores = sequência
+4. Atividade sem saída definida → gere `<endEvent>` após ela. Nunca deixe atividade sem saída.
 
+### 9. Ordenação de sequenceFlows em gateways
 
-### 7. Atributo `name=` no XML
+Ao declarar `<sequenceFlow>` de saída de `<exclusiveGateway>`, coloque PRIMEIRO o fluxo para atividade com `<messageFlow>` (comunicação externa), DEPOIS atividades internas. Isso otimiza o layout DFS.
 
-- Use **sempre** o campo `nome_bpmn` do JSON como valor do atributo `name=` de cada elemento BPMN
-- Nunca use o campo `descricao` como `name=` — ele existe apenas como contexto interno
-- Se um elemento não tiver `nome_bpmn`, gere um nome curto seguindo a convenção (Verbo + Objeto, máx 4 palavras)
+### 10. Posicionamento de atividades que cruzam lanes (handoff para lane inferior)
 
-### 8. Regras de inferência de sequência
-
-Derive a sequência seguindo estas regras em ordem de prioridade:
-
-1. Comece pelo evento start e conecte à primeira atividade do primeiro ator interno
-2. Siga a ordem lógica das atividades conforme as descrições (verbos indicam sequência)
-3. Cada gateway tem exatamente uma saída por condição em `condicoes`
-4. Handoff entre atores indica sequência (atividade do ator A → atividade do ator B)
-5. Toda atividade que não possui nenhum `<sequenceFlow>` de saída definido no JSON (não é origem de nenhuma seta, não tem gateway subsequente) DEVE ser seguida imediatamente por um `<endEvent>`. Gere: `<endEvent id="ev-fim-[ativ-id]" name="[nome curto do estado final]"/>` e conecte com um `<sequenceFlow>`. Nunca deixe uma atividade sem saída — um token preso é um processo zumbi.
-
-### 9. Ordenação semântica de sequenceFlows em gateways (prevenção de colisões visuais)
-
-O motor de layout usa DFS para calcular a posição vertical (row) dos nós. A ordem em que os `<sequenceFlow>` de saída são declarados no XML determina qual nó o DFS visita primeiro — e, portanto, qual recebe `row = 0` (topo da célula).
-
-**Regra obrigatória:** O motor de layout usa DFS iterativo e envia as atividades com comunicação externa para a base (para não cruzar setas ao se conectar com o pool externo). Para que o alinhamento das atividades filhas seja perfeito, o `<sequenceFlow>` que vai para a atividade com comunicação externa deve ser explorado primeiro no DFS.
-Portanto, ao declarar os `<sequenceFlow>` de saída de um `<exclusiveGateway>`, coloque **PRIMEIRO** o fluxo que leva à atividade que possui `<messageFlow>` com pool externo (comunicação com cliente/fornecedor). Coloque **DEPOIS** os fluxos que levam a atividades puramente internas (automações sistêmicas, tarefas sem comunicação externa).
+Quando uma atividade pertence à lane A mas seu próximo passo é na lane B (abaixo), declare essa atividade **por último** no `<flowNodeRef>` da sua lane. O layout a posicionará na base da lane, próximo à fronteira, minimizando cruzamentos visuais.
 
 ```xml
-<!-- CORRETO — "Acionar Cliente" (tem messageFlow) declarado PRIMEIRO; "Baixar Título" (interno) DEPOIS -->
-<sequenceFlow id="sf-gw01-ativ03" name="Sim" sourceRef="gw-01" targetRef="ativ-03">
-  <conditionExpression>Sim</conditionExpression>
-</sequenceFlow>
-<sequenceFlow id="sf-gw01-ativ04" name="Não" sourceRef="gw-01" targetRef="ativ-04">
-  <conditionExpression>Não</conditionExpression>
-</sequenceFlow>
-
-<!-- ERRADO — Inverter a ordem vai colocar os descendentes no row errado -->
-<sequenceFlow id="sf-gw01-ativ04" name="Não" sourceRef="gw-01" targetRef="ativ-04">...</sequenceFlow>
-<sequenceFlow id="sf-gw01-ativ03" name="Sim" sourceRef="gw-01" targetRef="ativ-03">...</sequenceFlow>
+<lane id="lane-atendente" name="Atendente Nível 1">
+  <flowNodeRef>ev-01</flowNodeRef>
+  <flowNodeRef>ativ-01</flowNodeRef>
+  <flowNodeRef>gw-01</flowNodeRef>
+  <flowNodeRef>ativ-03</flowNodeRef>   <!-- atividade interna (sem cruzamento) -->
+  <flowNodeRef>ativ-02</flowNodeRef>   <!-- ÚLTIMO: handoff para lane inferior -->
+</lane>
 ```
 
-**Critério de prioridade para ordenação no XML:**
-1. Fluxo com destino em atividade que tem `<messageFlow>` → declare **PRIMEIRO**
-2. Fluxo com destino em atividade puramente interna → declare **DEPOIS**
-3. Entre atividades do mesmo tipo: mantenha a ordem lógica do processo (Sim antes de Não quando Sim é o caminho principal)
-
-> **Nota:** O motor de layout aplica adicionalmente um algoritmo de Atração de Borda (Border Magnetism) que corrige automaticamente a posição mesmo que a ordem XML esteja errada. Esta regra XML é uma camada de segurança adicional para processos muito complexos.
-
-### 10. Proibições absolutas
+### 11. Proibições absolutas
 
 - Não crie Lane para ator externo
 - Não crie Lane vazia
-- Não use Sequence Flow cruzando fronteira de Pool (use Message Flow)
-- Não deixe gateway com ramo de saída sem destino
-- Não use End Event quando a condição indica retorno/loop
-- Não omita o `name=` nos Sequence Flows que saem de gateways
-- Não use descrições longas como rótulo de elemento BPMN
-- Não deixe múltiplas setas chegando em uma mesma tarefa sem um gateway convergente antes dela (convergência implícita). Se um gateway divergente abre caminhos alternativos, feche-os com um segundo `<exclusiveGateway>` vazio antes da próxima tarefa comum
-- Não modele "Plano B acionado" ou equivalentes como `<userTask>`. Estado no particípio passado sem ação subsequente definida é sempre um `<endEvent>`, nunca uma tarefa
+- Não use sequenceFlow cruzando Pool (use messageFlow)
+- Não deixe gateway com ramo sem destino
+- Não omita `name=` em sequenceFlows saindo de gateways
+- Não use convergência implícita em tasks — se dois ou mais caminhos chegam à mesma task, insira um `<exclusiveGateway>` convergente antes
+- Estado no particípio passado sem ação subsequente = `<endEvent>`, nunca `<userTask>`
+- Todo elemento de fluxo (`userTask`, `serviceTask`, `scriptTask`, `exclusiveGateway`, `startEvent`, `endEvent`, `intermediateCatchEvent`) DEVE estar listado em `<flowNodeRef>` de uma lane — sem exceção, incluindo serviceTasks de sistema
+- Não conecte `<startEvent>` como `sourceRef` de messageFlow — startEvent recebe mensagem, nunca envia
+- Não crie pool externo para ator que apenas dispara o processo sem atividades modeladas
 
-### 11. IDs
+### 13. IDs
 
-Use os IDs do JSON (ativ-01, gw-01, ev-01, etc.). Para sequenceFlows: `sf-{origem}-{destino}`. Para messageFlows: `mf-{origem}-{destino}`.
+Use IDs do JSON. sequenceFlows: `sf-{origem}-{destino}`. messageFlows: `mf-{origem}-{destino}`.
 
 ## Estrutura raiz — sem atores externos
 
@@ -242,13 +132,12 @@ Use os IDs do JSON (ativ-01, gw-01, ev-01, etc.). Para sequenceFlows: `sf-{orige
              id="definitions_as_is">
   <process id="proc_as_is" name="..." isExecutable="false">
     <laneSet id="ls_01">
-      <!-- apenas lanes de atores internos com atividades -->
+      <!-- lanes de atores internos com atividades -->
     </laneSet>
     <!-- elementos de fluxo -->
   </process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="proc_as_is">
-    </bpmndi:BPMNPlane>
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="proc_as_is"/>
   </bpmndi:BPMNDiagram>
 </definitions>
 ```
@@ -265,21 +154,15 @@ Use os IDs do JSON (ativ-01, gw-01, ev-01, etc.). Para sequenceFlows: `sf-{orige
              targetNamespace="http://escritorio-bpm/as-is"
              id="definitions_as_is">
   <collaboration id="collab_01">
-    <participant id="part-empresa" name="[Nome da Empresa]" processRef="proc_as_is"/>
-    <participant id="part-[ator-externo]" name="[Nome Ator Externo]" isExecutable="false"/>
-    <messageFlow id="mf-[ativ]-[part]" sourceRef="[id-atividade]" targetRef="part-[ator-externo]"/>
+    <participant id="part-empresa" name="[Nome]" processRef="proc_as_is"/>
+    <participant id="part-[ator]" name="[Nome Externo]" isExecutable="false"/>
+    <messageFlow id="mf-[ativ]-[part]" sourceRef="[id-atividade]" targetRef="part-[ator]"/>
   </collaboration>
   <process id="proc_as_is" name="..." isExecutable="false">
-    <laneSet id="ls_01">
-      <!-- apenas atores internos -->
-    </laneSet>
-    <!-- elementos de fluxo -->
+    <laneSet id="ls_01"><!-- apenas atores internos --></laneSet>
   </process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="collab_01">
-    </bpmndi:BPMNPlane>
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="collab_01"/>
   </bpmndi:BPMNDiagram>
 </definitions>
 ```
-
-Retorne APENAS o XML. Comece com `<?xml` e termine com `</definitions>`.

@@ -1,10 +1,10 @@
 @echo off
-REM Instala as skills BPM no diretório local do Hermes
+REM Instala as skills BPM no diretório local do Hermes (instância do projeto)
 REM Execute este script sempre que atualizar os SKILL.md do projeto
 
-set HERMES_SKILLS=%USERPROFILE%\.hermes\skills\local
+set HERMES_SKILLS=%~dp0.hermes\skills
 
-echo Instalando skills BPM...
+echo Instalando skills BPM em %HERMES_SKILLS%...
 
 xcopy /E /I /Y "skills\bpm-pre-reuniao" "%HERMES_SKILLS%\bpm-pre-reuniao"
 xcopy /E /I /Y "skills\bpm-transcricao" "%HERMES_SKILLS%\bpm-transcricao"

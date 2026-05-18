@@ -4,112 +4,53 @@ outputFile: elicitacao.json
 execution: inline
 ---
 
-Você receberá a transcrição de uma entrevista sobre um processo de negócio. Extraia as entidades abaixo e retorne um JSON estruturado.
+Extraia as entidades abaixo da transcrição e retorne JSON estruturado. Retorne APENAS o JSON, sem explicação. Comece com { e termine com }.
 
-## Input
+## Transcrição
 
 {{input}}
 
-## Schema de saída obrigatório
+## Schema
 
 ```json
 {
   "processo": "nome do processo",
-  "atores": [
-    { "id": "ator-01", "nome": "...", "tipo": "interno | externo | sistema" }
-  ],
-  "atividades": [
-    { "id": "ativ-01", "nome_bpmn": "...", "descricao": "...", "ator_responsavel": "ator-XX ou sis-XX", "sistema": "sis-XX ou null", "task_type": "userTask | serviceTask | scriptTask" }
-  ],
-  "eventos": [
-    { "id": "ev-01", "tipo": "start | end", "nome_bpmn": "...", "descricao": "..." }
-  ],
-  "gateways": [
-    {
-      "id": "gw-01",
-      "tipo": "exclusive",
-      "nome_bpmn": "...",
-      "descricao": "...",
-      "condicoes": [
-        { "label": "Sim", "descricao": "...", "destino_tipo": "atividade | evento_fim | loop", "destino_id": "ativ-XX | ev-XX" },
-        { "label": "Não", "descricao": "...", "destino_tipo": "atividade | evento_fim | loop", "destino_id": "ativ-XX | ev-XX" }
-      ]
-    }
-  ],
-  "sistemas": [
-    { "id": "sis-01", "nome": "...", "tipo": "ERP | CRM | outro" }
-  ],
-  "regras_de_negocio": [
-    { "id": "rn-01", "descricao": "...", "atividade_relacionada": "ativ-XX" }
-  ],
+  "atores": [{ "id": "ator-01", "nome": "...", "tipo": "interno | externo | sistema" }],
+  "atividades": [{ "id": "ativ-01", "nome_bpmn": "...", "descricao": "...", "ator_responsavel": "ator-XX ou sis-XX", "sistema": "sis-XX ou null", "task_type": "userTask | serviceTask | scriptTask" }],
+  "eventos": [{ "id": "ev-01", "tipo": "start | end", "nome_bpmn": "...", "descricao": "..." }],
+  "gateways": [{
+    "id": "gw-01", "tipo": "exclusive", "nome_bpmn": "...", "descricao": "...",
+    "condicoes": [{ "label": "Sim", "descricao": "...", "destino_tipo": "atividade | evento_fim | loop", "destino_id": "ativ-XX | ev-XX" }]
+  }],
+  "sistemas": [{ "id": "sis-01", "nome": "...", "tipo": "ERP | CRM | outro" }],
+  "regras_de_negocio": [{ "id": "rn-01", "descricao": "...", "atividade_relacionada": "ativ-XX" }],
   "observacoes": ["..."]
 }
 ```
 
-## Convenção de nomenclatura BPMN (campo `nome_bpmn`)
+## Regras de nomenclatura (`nome_bpmn`)
 
-O campo `nome_bpmn` é obrigatório em atividades, eventos e gateways. Ele é o rótulo exato que aparecerá no diagrama. Regras:
+**Atividades:** Verbo Infinitivo + Objeto, máx 4 palavras, sem artigos, sem parênteses. Ex: `"Emitir Requisição de Compra"`.
+- Se o mesmo conceito aparece com atores ou naturezas distintas, crie atividades separadas com nomes distintos (ex: `"Baixar Título via Sistema"` vs `"Baixar Título Manual"`). Nunca repita `nome_bpmn` com `ator_responsavel` ou `task_type` diferentes.
 
-### Atividades (`atividades[].nome_bpmn`)
-- Formato: **Verbo Infinitivo + Objeto**
-- Máximo 4 palavras
-- Sem artigos ("o", "a", "os", "as"), sem parênteses, sem dois-pontos
-- Exemplos corretos: `"Emitir Requisição de Compra"`, `"Analisar orçamentos recebidos"`, `"Aprovar Pedido de Compra"`
-- Exemplos errados: `"Emitir Requisição de Compra (RC) com descrição do material..."` ❌
+**Eventos start:** estado que dispara o processo, máx 4 palavras, sem verbo conjugado. Ex: `"Necessidade de aquisição identificada"`.
+**Eventos end:** estado resultante, máx 3 palavras. Ex: `"Pagamento efetuado"`.
+**Gateways:** pergunta fechada terminando com "?", máx 6 palavras. Ex: `"RC está clara e correta?"`.
 
-**Regra de unicidade de nomes:** Se o mesmo conceito de negócio (ex: "Baixar Título") aparece em caminhos distintos com **atores diferentes** ou **naturezas de execução diferentes** (manual vs. automática), trate como duas atividades separadas e diferencie os nomes:
-- `"Baixar Título via Sistema"` (serviceTask, executada pelo sistema)
-- `"Baixar Título Manual"` (userTask, executada pelo humano)
+**Condições de gateway:**
+- `label`: `"Sim"` ou `"Não"`
+- `destino_tipo`: `"atividade"` (fluxo normal), `"evento_fim"` (encerramento definitivo), `"loop"` (retorno para reprocessamento)
+- Use `"loop"` quando houver "devolver", "corrigir", "tentar novamente". Use `"evento_fim"` só quando o processo termina sem retorno.
 
-Nunca atribua o mesmo `nome_bpmn` a duas atividades com `ator_responsavel` ou `task_type` distintos. Isso cria paradoxo de responsabilidade no diagrama e impede rastreabilidade.
+## Classificação `task_type`
 
-### Eventos (`eventos[].nome_bpmn`)
-- Evento start: **estado ou contexto que dispara o processo** — máx 4 palavras, sem verbo conjugado
-  - Exemplo: `"Necessidade de aquisição identificada"`
-- Evento end: **estado resultante conciso** — máx 3 palavras
-  - Exemplos: `"Pagamento efetuado"`, `"Pedido cancelado"`, `"Plano B acionado"`
+- `"userTask"` — humano executa manualmente (análise, aprovação, contato)
+- `"serviceTask"` — sistema executa automaticamente (integração ERP, geração NF, e-mail automático); também quando humano apenas inicia e o sistema executa
+- `"scriptTask"` — regra automática do motor de processo (raro no AS-IS)
+- Se `ator_responsavel` é `sis-XX` → sempre `"serviceTask"`
 
-### Gateways (`gateways[].nome_bpmn`)
-- Formato: **pergunta fechada (sim/não) terminando com "?"**
-- Máximo 6 palavras
-- Sem parênteses, sem explicações adicionais
-- Exemplos corretos: `"RC está clara e correta?"`, `"Fornecedor ativo na carteira?"`, `"Mínimo de 3 orçamentos recebidos?"`
-- Exemplos errados: `"Fornecedor já está ativo na carteira de fornecedores?"` ❌ (muitas palavras)
+## Tipos de ator
 
-### Condições de gateway (`gateways[].condicoes`)
-
-Cada condição deve ter:
-- `label`: `"Sim"` ou `"Não"` (rótulo que aparecerá na seta do diagrama)
-- `descricao`: descrição completa do que ocorre neste caminho
-- `destino_tipo`: um dos três valores abaixo:
-  - `"atividade"` — o fluxo vai para uma próxima atividade (caminho normal)
-  - `"evento_fim"` — o fluxo termina o processo definitivamente neste ponto (abandono, encerramento permanente)
-  - `"loop"` — o fluxo retorna a uma atividade anterior para reprocessamento (devolução para correção, nova tentativa)
-- `destino_id`: o ID da atividade ou evento de destino (`ativ-XX` ou `ev-XX`)
-
-**Regra crítica**: use `"evento_fim"` apenas quando o processo realmente termina sem retorno possível. Se houver menção a "devolver", "corrigir", "tentar novamente" ou "buscar alternativa", use `"loop"` com `destino_id` apontando para a atividade de origem.
-
-## Classificação de tipo de tarefa (campo `task_type`)
-
-Classifique cada atividade com base em quem executa e como:
-
-- `"userTask"` — humano interno executa a etapa manualmente, sem mediação de sistema
-- `"serviceTask"` — sistema executa automaticamente, sem intervenção humana no momento da execução (ex: envio de e-mail automático, integração ERP, geração de NF eletrônica)
-- `"scriptTask"` — regra ou cálculo automático executado pelo próprio motor de processo (raro no AS-IS; use com cautela)
-
-**Regra prática para o AS-IS:**
-- Se `ator_responsavel` é um `sis-XX` → sempre `"serviceTask"`
-- Se `ator_responsavel` é humano E `sistema` não é null E a descrição usa verbos como "lançar", "registrar", "emitir" via sistema → `"serviceTask"` (o humano apenas inicia; o sistema executa)
-- Se `ator_responsavel` é humano E a etapa é julgamento, aprovação, análise ou contato interpessoal → `"userTask"`
-- Em caso de dúvida, use `"userTask"`
-
-## Ator externo
-
-O campo `tipo` do ator é crítico para a modelagem BPMN:
-- `"interno"`: pertence à organização → representado como Lane no Pool principal
-- `"externo"`: fora da organização (fornecedor, cliente, banco) → representado como Pool Black Box separado
-- `"sistema"`: software/plataforma → representado como serviceTask, sem lane própria
-
-Identifique corretamente: **Fornecedor, cliente, banco, transportadora, órgão regulador** são sempre `"externo"`.
-
-Retorne APENAS o JSON, sem explicação, sem markdown, sem bloco de código. Comece com { e termine com }.
+- `"interno"` → Lane no Pool principal
+- `"externo"` → Pool Black Box separado (fornecedor, cliente, banco, transportadora, órgão regulador são SEMPRE externos)
+- `"sistema"` → serviceTask na lane do responsável, sem Lane/Pool próprio
