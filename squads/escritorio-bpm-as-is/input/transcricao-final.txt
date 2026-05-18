@@ -1,8 +1,23 @@
-Texto para Teste: Processo de Solicitação de Cancelamento de Serviço
-O processo é disparado assim que o cliente entra no chat de atendimento e solicita o cancelamento do seu plano. O atendente de retenção recebe o caso e analisa o histórico de uso e os motivos alegados pelo cliente.
+--- ENTREVISTA DE MAPEAMENTO DE PROCESSO AS-IS ---
+Entrevistador: Olá, obrigado por disponibilizar esse tempo para mapearmos o processo de Solicitação de Reembolso da empresa. Você poderia me explicar como o fluxo começa?
 
-Em seguida, o atendente faz uma proposta de desconto ou upgrade de plano para tentar reter o cliente. Se o cliente aceitar a proposta de retenção, o atendente altera as condições do plano no sistema, confirma os novos benefícios e encerra o atendimento mantendo o contrato ativo.
+Dono do Processo: Claro! Tudo começa quando o nosso Cliente Externo envia uma nova solicitação de reembolso de viagem por e-mail para nós. Esse e-mail já vem com um formulário preenchido que chamamos de "Solicitação de Reembolso" e os respectivos comprovantes anexados.
 
-Se o cliente recusar a proposta e insistir no cancelamento, o atendente verifica se existem faturas pendentes ou multas contratuais por quebra de fidelidade. Caso haja alguma pendência financeira, o atendente emite o boleto de quitação, envia para o e-mail do cliente e o sistema agenda o cancelamento automático para a data de vencimento do boleto.
+Entrevistador: Entendi. E quem é a primeira pessoa a tratar esse pedido quando ele chega?
 
-Caso não haja nenhuma pendência financeira ou multa, o atendente solicita o cancelamento imediato e o sistema desativa o acesso do cliente ao serviço de forma instantânea, enviando o comprovante de encerramento por e-mail e finalizando o processo.
+Dono do Processo: É o nosso Atendente de Triagem. A primeira tarefa dele é "Triar Documentos". Ele abre o e-mail, confere se os anexos estão legíveis e se o formulário de solicitação está assinado. Ao terminar essa triagem, ele consolida o documento oficial da "Solicitação de Reembolso" no nosso sistema e envia o fluxo direto para a fila do Analista Financeiro. Esse envio é o nosso handoff oficial de departamento.
+
+Entrevistador: Perfeito. E o que o Analista Financeiro faz em seguida?
+
+Dono do Processo: Bom, a primeira coisa que o Analista Financeiro faz é abrir a tarefa "Analisar Despesa". Para fazer essa análise, o analista precisa obrigatoriamente ler duas informações que o atendente consolidou: o documento de "Solicitação de Reembolso" e o arquivo do "Comprovante de Despesa". 
+
+Entrevistador: E se houver algum erro ou rasura nesses comprovantes enviados? Como vocês tratam isso?
+
+Dono do Processo: Esse é o nosso maior gargalo. O Analista toma uma decisão: a documentação está regular? 
+Se a documentação NÃO estiver regular, ele executa a tarefa "Notificar Pendências". Nessa tarefa, ele atualiza o "Comprovante de Despesa" com anotações de pendência, envia um aviso por e-mail de volta para o Cliente Externo pedindo a correção, e o processo entra em compasso de espera. Nós aguardamos 24 horas para que o cliente nos envie o documento corrigido. Passadas essas 24 horas do timer de espera, o fluxo retorna para a mesa do Analista para que ele reavalie tudo desde o início, entrando em loop até que esteja correto.
+
+Entrevistador: E se a documentação estiver totalmente correta e regular? Qual é o caminho feliz?
+
+Dono do Processo: Ah, se a documentação estiver regular, o Analista aprova e o nosso sistema entra em ação de forma totalmente automatizada. A tarefa do sistema é "Processar Reembolso Automático". O sistema faz a transferência Pix para o cliente de forma imediata e gera na hora o "Recibo de Pagamento" assinado digitalmente. Com o recibo gerado, o processo chega ao fim como "Reembolso Finalizado".
+
+Entrevistador: Excelente, mapeamos perfeitamente o fluxo de ponta a ponta com todas as raias, tempos, desvios e os documentos envolvidos! Muito obrigado pelas informações.

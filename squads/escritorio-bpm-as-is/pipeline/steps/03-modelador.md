@@ -10,114 +10,99 @@ Transforme o JSON de elicitação em XML BPMN 2.0 válido. Siga rigorosamente as
 
 {{input}}
 
-## Regras obrigatórias
+## Regras obrigatórias (OMG BPMN 2.0.2 & XML Schema Compliant)
 
-### 1. Atores internos vs externos
+Você deve seguir rigorosamente as especificações oficiais da OMG BPMN 2.0.2 (Seções 7.3 a 7.6) e as convenções do Escritório de BPM:
 
-- `tipo: "interno"` → **Lane** dentro do Pool principal (`proc_as_is`)
-- `tipo: "externo"` → **Pool separado (Black Box)** — NUNCA uma Lane
-- `tipo: "sistema"` → sem Lane/Pool; representado como `<serviceTask>` na lane do responsável
-
-Quando houver ator externo, adicione `<collaboration>` antes do `<process>` com `<participant>` para empresa e externos, e `<messageFlow>` para interações cross-pool.
-
-### 2. Lanes — somente atores internos com atividades
-
-- Nunca crie lane vazia
-- Todo elemento de fluxo (`startEvent`, `endEvent`, `intermediateCatchEvent`, `userTask`, `serviceTask`, `scriptTask`, `exclusiveGateway`) DEVE estar em `<flowNodeRef>` de uma lane
-- `startEvent` e `endEvent` vão na lane do ator com a atividade adjacente
-
-### 3. Tipos de tarefa
-
-Use o campo `task_type` do JSON: `"userTask"` → `<userTask>`, `"serviceTask"` → `<serviceTask>`, `"scriptTask"` → `<scriptTask>`. Se ausente: humano → `<userTask>`, sistema (`sis-XX`) → `<serviceTask>`.
-
-### 4. Gateways — rótulos obrigatórios
-
-Todos exclusivos: `<exclusiveGateway>`. Cada `<sequenceFlow>` saindo de gateway DEVE ter `name=` igual ao label (`"Sim"` ou `"Não"`) e `<conditionExpression>`.
-
-Gateway convergente obrigatório: quando caminhos alternativos se reunem em tarefa comum, insira `<exclusiveGateway>` sem rótulo como ponto de convergência antes da tarefa.
-
+### 1. Estrutura XML e Namespaces Obrigatórios
+O arquivo gerado DEVE possuir a raiz `<definitions>` contendo os namespaces oficiais de modelo e Diagram Interchange (DI) exatamente assim:
 ```xml
-<sequenceFlow id="sf-gw01-ativ03" name="Sim" sourceRef="gw-01" targetRef="ativ-03"><conditionExpression>Sim</conditionExpression></sequenceFlow>
-<sequenceFlow id="sf-gw01-gw-conv-01" name="Não" sourceRef="gw-01" targetRef="gw-conv-01"><conditionExpression>Não</conditionExpression></sequenceFlow>
-<sequenceFlow id="sf-ativ03-gw-conv-01" sourceRef="ativ-03" targetRef="gw-conv-01"/>
-<exclusiveGateway id="gw-conv-01"/>
-<sequenceFlow id="sf-gw-conv-01-ativ05" sourceRef="gw-conv-01" targetRef="ativ-05"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://escritorio-bpm/as-is"
+             id="definitions_as_is">
 ```
 
-### 5. Loops — timer obrigatório ANTES do gateway
+### 2. Atores Internos vs Externos (Swimlanes e Black Box)
+- **`tipo: "interno"`** → Representado como **Lane** dentro do Pool principal (`proc_as_is`).
+  - **NUNCA** crie raias (lanes) vazias.
+  - Todo elemento de fluxo (`startEvent`, `endEvent`, `userTask`, `serviceTask`, `exclusiveGateway`, `intermediateCatchEvent`) **DEVE** estar listado dentro de um `<flowNodeRef>` de alguma Lane (incluindo serviceTasks de sistema).
+- **`tipo: "externo"`** → Representado como **Pool separado (Black Box)** na tag `<collaboration>`.
+  - **NUNCA** coloque um ator externo dentro de uma Lane do pool interno.
+  - Só crie Pool externo se houver fluxos explícitos de ida E volta. Se o ator externo apenas dispara o processo, use apenas um `<startEvent>` descritivo no fluxo interno.
 
-Quando `destino_tipo == "loop"`, gere `<intermediateCatchEvent>` com `<timerEventDefinition>` como passo sequencial ANTES do gateway (não na branch "Não"):
+### 3. Matriz Estrita de Conexão (OMG p. 40-41)
+- **`<sequenceFlow>` (Fluxo de Controle):**
+  - Conecta **apenas** elementos dentro do mesmo Pool.
+  * **PROIBIDO** cruzar fronteira de Pool com sequenceFlow.
+  * **PROIBIDO** conectar sequenceFlow de/para raias (lanes), pools, Data Objects ou Text Annotations.
+- **`<messageFlow>` (Fluxo de Mensagem):**
+  - Conecta **apenas** pools diferentes ou elementos em pools diferentes (Tasks, Catching/Throwing Events).
+  * **PROIBIDO** usar messageFlow dentro do mesmo Pool.
+  * **PROIBIDO** conectar messageFlow de/para Gateways ou outros sequenceFlows.
+  * **PROIBIDO** usar `<startEvent>` comum como origem (sourceRef) de messageFlow (startEvent apenas recepta).
 
-```xml
-<intermediateCatchEvent id="timer-gw-01" name="Aguardar 24h">
-  <timerEventDefinition><timeDuration xsi:type="tFormalExpression">PT24H</timeDuration></timerEventDefinition>
-</intermediateCatchEvent>
-<sequenceFlow id="sf-ativ01-timer" sourceRef="ativ-01" targetRef="timer-gw-01"/>
-<sequenceFlow id="sf-timer-gw01" sourceRef="timer-gw-01" targetRef="gw-01"/>
-<sequenceFlow id="sf-gw01-ativ02" name="Sim" sourceRef="gw-01" targetRef="ativ-02"><conditionExpression>Sim</conditionExpression></sequenceFlow>
-<sequenceFlow id="sf-gw01-ativ01" name="Não" sourceRef="gw-01" targetRef="ativ-01"><conditionExpression>Não</conditionExpression></sequenceFlow>
-```
+### 4. Tipos de Tarefa e Nomenclatura
+- Humano executa (análise, aprovação, contato): `<userTask>`.
+- Sistema executa (`ator_responsavel` iniciado com `sis-`): `<serviceTask>`.
+- **Nomenclatura das Tarefas:** Verbo Infinitivo + Objeto, máx 4 palavras, sem artigos, sem parênteses. (Ex: `"Emitir Requisição Compra"`, não `"Formulário preenchido"`).
 
-Adicione `timer-[gw-id]` no `<flowNodeRef>` da lane correta.
+### 5. Gateways de Decisão (XOR)
+- **Divergente (Split):** `<exclusiveGateway>`. Deve possuir rótulo de pergunta fechada terminando com `"?"` (Ex: `"Documento está correto?"`).
+  - Cada sequenceFlow de saída **DEVE** ter `name="Sim"` ou `name="Não"`, e conter uma `<conditionExpression>` de lógica interna.
+- **Convergente (Merge):** `<exclusiveGateway>`. Obrigatório sempre que caminhos alternativos se reúnem em tarefa comum.
+  - **PROIBIDO** convergência implícita (múltiplas setas chegando na mesma tarefa).
+  - Gateways convergentes **NÃO DEVEM** ter atributo `name` no XML para evitar poluição visual.
 
-### 6. Message Flows — interações com externos
+### 6. Loops — Timer Obrigatório
+Quando `destino_tipo == "loop"`, você deve inserir um `<intermediateCatchEvent>` com `<timerEventDefinition>` configurado com `PT24H` sequencialmente **ANTES do gateway de decisão** (não no branch de retorno "Não").
+Padrão correto: `[atividade] → [timer] → [gateway] → Sim (avança) / Não (retorna para atividade)`.
 
-Use `<messageFlow>` na `<collaboration>` para cruzar fronteira entre pools. NUNCA `<sequenceFlow>` cross-pool.
-- Saída interna → externo: `sourceRef="[id-atividade]"` `targetRef="part-[ator-externo]"`
-- Entrada externo → interno: `sourceRef="part-[ator-externo]"` `targetRef="[id-atividade]"`
+### 7. Organização e Layout DFS
+- Ao declarar sequenceFlows saindo de gateways XOR, coloque **PRIMEIRO** o fluxo que aponta para atividades com comunicação externa (`<messageFlow>`), e **DEPOIS** atividades puramente internas.
+- Quando uma atividade da Lane A envia o fluxo para a Lane B (handoff), declare essa atividade **por último** no `<flowNodeRef>` da Lane A.
 
-**Ator externo que apenas dispara o processo (sem atividades modeladas):** NÃO crie pool externo nem `<collaboration>`. Use apenas o `<startEvent>` com nome descritivo. Só crie pool externo quando o ator externo tiver interações explícitas de ida E volta documentadas no JSON.
+### 8. Modelagem de Dados e Documentos (OMG p. 201+ / CBOK v4.0)
+Quando uma atividade contiver `"documentos_entrada"` ou `"documentos_saida"`, gere os elementos de dados correspondentes no XML:
+1. Declare cada documento com `<dataObject id="doc-[id]" name="[Nome]"/>` e seu respectivo `<dataObjectReference id="doc-[id]-ref" dataObjectRef="doc-[id]" name="[Nome]"/>` diretamente dentro do bloco `<process id="proc_as_is">` (antes das atividades).
+2. Dentro da tag da atividade correspondente (ex: `<userTask>` ou `<serviceTask>`), declare:
+   - Para entrada:
+     ```xml
+     <dataInputAssociation id="dia-[ativ-id]-[doc-id]">
+       <sourceRef>doc-[id]-ref</sourceRef>
+     </dataInputAssociation>
+     ```
+   - Para saída:
+     ```xml
+     <dataOutputAssociation id="doa-[ativ-id]-[doc-id]">
+       <targetRef>doc-[id]-ref</targetRef>
+     </dataOutputAssociation>
+     ```
+   * Nota: normalize o `doc-[id]` usando minúsculas e hífen (ex: `"doc-requisicao-compra"`).
 
-**Direção obrigatória do messageFlow:**
-- Externo envia para interno → `sourceRef="part-[ator]"` `targetRef="[ev ou ativ interno]"`
-- Interno envia para externo → `sourceRef="[ativ interno]"` `targetRef="part-[ator]"`
-- NUNCA conecte um `<startEvent>` como `sourceRef` de messageFlow (startEvent não envia mensagem, recebe).
+### 9. Proibições Absolutas
+- Não use sequenceFlow cruzando Pools.
+- Não use messageFlow no mesmo Pool.
+- Não conecte Start Event como origem de messageFlow.
+- Não crie Lanes vazias.
+- Não deixe nenhuma atividade sem fluxo de saída (atividades zumbi).
+- Não use convergência implícita em tarefas.
+- Todo elemento de fluxo deve pertencer a uma Lane (via `<flowNodeRef>`).
 
-### 7. Atributo `name=`
+### 10. Convenções de IDs Estritos
+- Atividade: `ativ-XX`
+- Gateway: `gw-XX` ou `gw-conv-XX`
+- Evento: `ev-start` ou `ev-end-XX`
+- Timer: `timer-gw-XX`
+- Lane: `lane-analista`
+- Sequence Flow: `sf-{origem}-{destino}`
+- Message Flow: `mf-{origem}-{destino}`
+- Documento: `doc-{nome-normalizado}`
 
-Use sempre `nome_bpmn` do JSON. Nunca use `descricao` como `name=`.
-
-### 8. Sequência
-
-1. Comece pelo startEvent → primeira atividade
-2. Siga ordem lógica das descrições
-3. Handoff entre atores = sequência
-4. Atividade sem saída definida → gere `<endEvent>` após ela. Nunca deixe atividade sem saída.
-
-### 9. Ordenação de sequenceFlows em gateways
-
-Ao declarar `<sequenceFlow>` de saída de `<exclusiveGateway>`, coloque PRIMEIRO o fluxo para atividade com `<messageFlow>` (comunicação externa), DEPOIS atividades internas. Isso otimiza o layout DFS.
-
-### 10. Posicionamento de atividades que cruzam lanes (handoff para lane inferior)
-
-Quando uma atividade pertence à lane A mas seu próximo passo é na lane B (abaixo), declare essa atividade **por último** no `<flowNodeRef>` da sua lane. O layout a posicionará na base da lane, próximo à fronteira, minimizando cruzamentos visuais.
-
-```xml
-<lane id="lane-atendente" name="Atendente Nível 1">
-  <flowNodeRef>ev-01</flowNodeRef>
-  <flowNodeRef>ativ-01</flowNodeRef>
-  <flowNodeRef>gw-01</flowNodeRef>
-  <flowNodeRef>ativ-03</flowNodeRef>   <!-- atividade interna (sem cruzamento) -->
-  <flowNodeRef>ativ-02</flowNodeRef>   <!-- ÚLTIMO: handoff para lane inferior -->
-</lane>
-```
-
-### 11. Proibições absolutas
-
-- Não crie Lane para ator externo
-- Não crie Lane vazia
-- Não use sequenceFlow cruzando Pool (use messageFlow)
-- Não deixe gateway com ramo sem destino
-- Não omita `name=` em sequenceFlows saindo de gateways
-- Não use convergência implícita em tasks — se dois ou mais caminhos chegam à mesma task, insira um `<exclusiveGateway>` convergente antes
-- Estado no particípio passado sem ação subsequente = `<endEvent>`, nunca `<userTask>`
-- Todo elemento de fluxo (`userTask`, `serviceTask`, `scriptTask`, `exclusiveGateway`, `startEvent`, `endEvent`, `intermediateCatchEvent`) DEVE estar listado em `<flowNodeRef>` de uma lane — sem exceção, incluindo serviceTasks de sistema
-- Não conecte `<startEvent>` como `sourceRef` de messageFlow — startEvent recebe mensagem, nunca envia
-- Não crie pool externo para ator que apenas dispara o processo sem atividades modeladas
-
-### 13. IDs
-
-Use IDs do JSON. sequenceFlows: `sf-{origem}-{destino}`. messageFlows: `mf-{origem}-{destino}`.
 
 ## Estrutura raiz — sem atores externos
 

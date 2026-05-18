@@ -2,107 +2,52 @@
 type: checkpoint
 ---
 
-O Modelador gerou o XML BPMN. Antes de avançar, execute a validação automática abaixo.
+O Modelador gerou o XML BPMN. Antes de avançar, execute a validação automática estrutural e de conformidade oficial.
 
-## Passo 1 — Validação estrutural (obrigatória, sem exceção)
+## Passo 1 — Validação Estrutural e Semântica OMG
 
-Execute os comandos a seguir e reporte o resultado de CADA UM:
-
-```bash
-# 1a. Lanes vazias — resultado deve ser zero linhas
-grep -n '<lane ' processo-as-is.bpmn | while read lane; do
-  id=$(echo "$lane" | grep -o 'id="[^"]*"' | head -1)
-  echo "$id"
-done
-# (alternativa simples)
-grep -c 'flowNodeRef' processo-as-is.bpmn
-```
+Execute o script de validação de BPMN XML no terminal:
 
 ```bash
-# 1b. Nomes longos — deve retornar zero linhas (nenhum name= com mais de 50 chars)
-grep -oP 'name="[^"]{51,}"' processo-as-is.bpmn
+node squads/escritorio-bpm-as-is/scripts/validate-bpmn-xml.js processo-as-is.bpmn
 ```
 
-```bash
-# 1c. Lanes sem flowNodeRef — deve retornar zero blocos
-grep -A1 '<lane ' processo-as-is.bpmn | grep -B1 '</lane>'
-```
+Este script automático verifica com precisão matemática:
+* **Conformidade de Raias (Lanes):** Lanes vazias, elementos sem lane associada, lanes representando atores externos.
+* **Matriz de Conectividade da OMG:** sequenceFlows cruzando pools ou messageFlows internos.
+* **Gateways Divergentes/Convergentes:** Pergunta no rótulo, Sim/Não e expressões lógicas de condições em saídas, ausência de rótulos poluentes em junções convergentes.
+* **Convergência Implícita (OMG 7.3.2):** Múltiplos fluxos de controle chegando na mesma atividade sem gateway convergente (Merge).
+* **Atividades Zumbi:** Tarefas ou eventos sem fluxos de saída (deadlocks).
+* **Lógica de Loops:** Loops sem controle de tempo por timer intermediário catch event.
+* **Nomenclatura BPMN:** Verbos no infinitivo, nomes com mais de 50 caracteres.
 
-```bash
-# 1d. Gateways sem name nas saídas — deve retornar zero linhas
-grep -P 'sourceRef="gw-' processo-as-is.bpmn | grep -v 'name='
-```
+> [!IMPORTANT]
+> Se o script reportar qualquer **ERRO CRÍTICO (Exit Code 1)**, você **NÃO PODE APROVAR** o checkpoint. O Modelador deve refazer o XML ajustando as tags.
 
-```bash
-# 1e. Ator externo modelado como Lane — deve retornar zero (Fornecedor, cliente, etc. não devem estar em <lane>)
-grep -i 'lane.*fornecedor\|lane.*cliente\|lane.*transportadora' processo-as-is.bpmn
-```
+---
 
-```bash
-# 1f. SequenceFlow cruzando fronteira de Pool — deve retornar zero linhas
-# Um sequenceFlow cujo sourceRef ou targetRef aponta para um <participant> é violação BPMN 2.0
-grep -oP 'sequenceFlow[^>]*sourceRef="part-[^"]*"' processo-as-is.bpmn
-grep -oP 'sequenceFlow[^>]*targetRef="part-[^"]*"' processo-as-is.bpmn
-```
+## Passo 2 — Geração de Layout e Inspeção Visual
 
-```bash
-# 1g. Convergência implícita — tarefas com mais de uma seta de entrada sem gateway convergente
-# Conta sourceRefs duplicados: se um mesmo targetRef aparece mais de uma vez em sequenceFlows,
-# pode ser convergência implícita. Resultado deve ser inspecionado manualmente.
-grep -oP 'targetRef="\K[^"]+' processo-as-is.bpmn | sort | uniq -d
-```
-
-```bash
-# 1h. Loop sem controle — sequenceFlow de retorno sem intermediateCatchEvent (timer) antes da atividade
-# Detecta back-edges diretos de gateway para atividade sem timer intermediário.
-# Se houver conditionExpression "Não" apontando para uma userTask ou serviceTask (não para um evento),
-# é provável que o loop esteja sem controle de tempo.
-grep -oP 'sequenceFlow[^>]*targetRef="ativ-[^"]*"[^>]*>' processo-as-is.bpmn \
-  | grep -v 'intermediateCatchEvent' \
-  | grep 'conditionExpression' || echo "OK - loops com controle ou sem loop"
-# Alternativa: verificar se existe pelo menos um intermediateCatchEvent no arquivo quando há back-edge
-grep -c 'intermediateCatchEvent' processo-as-is.bpmn
-```
-
-```bash
-# 1i. Atividades zumbi — userTask/serviceTask/scriptTask sem sequenceFlow de saída
-# Uma task cujo id não aparece como sourceRef em nenhum sequenceFlow tem token preso:
-# o processo executa a tarefa e nunca sai. Falta endEvent ou conexão de saída.
-# Resultado deve ser zero linhas.
-node -e "
-const fs = require('fs');
-const xml = fs.readFileSync('processo-as-is.bpmn', 'utf8');
-const ids = [...xml.matchAll(/<(?:userTask|serviceTask|scriptTask)\s[^>]*id=\"([^\"]+)\"/g)].map(m => m[1]);
-const srcs = new Set([...xml.matchAll(/sourceRef=\"([^\"]+)\"/g)].map(m => m[1]));
-const zombies = ids.filter(id => !srcs.has(id));
-if (zombies.length) { console.log('ZUMBI (sem saída):', zombies.join(', ')); }
-"
-```
-
-Se qualquer verificação retornar resultado, **corrija o BPMN antes de continuar**. Não avance para o Auditor com erros.
-
-**Nota sobre 1g × 1h:** `targetRef` duplicado em 1g é loop intencional quando o segundo `sourceRef` é um `intermediateCatchEvent` (timer). Verifique 1h antes de concluir que 1g é violação.
-
-**Nota sobre 1i:** atividade terminal intencional (estado em particípio passado como "Plano B acionado") deve ser modelada como `<endEvent>`, não como task. Se 1i retornar esse tipo de ID, o erro está no Modelador — corrija a tag, não ignore o resultado.
-
-## Passo 2 — Layout visual
+Gere o posicionamento geométrico oficial do Diagram Interchange (DI):
 
 ```bash
 node squads/escritorio-bpm-as-is/scripts/bpmn-layout.js \
-  <caminho>/processo-as-is.bpmn \
-  <caminho>/processo-as-is-layout.bpmn
+  processo-as-is.bpmn \
+  processo-as-is-layout.bpmn
 ```
 
-Abra no bpmn.io e confirme visualmente:
-- Lanes horizontais, sem Lane vazia
-- Setas visíveis em todos os elementos
-- Gateways com label terminando em "?"
-- Nenhum elemento sobreposto
+Abra o arquivo gerado `processo-as-is-layout.bpmn` no modelador visual (Bizagi ou bpmn.io) e confirme visualmente:
+* As raias horizontais estão bem espaçadas.
+* Todas as setas estão conectadas perfeitamente e visíveis.
+* Não há caixas sobrepostas.
+* O fluxo flui logicamente da esquerda para a direita.
 
-## Passo 3 — Aprovação
+---
 
-Só passe para o Auditor após:
-- [ ] Todas as 9 verificações retornaram zero resultados (1g requer inspeção manual; 1i usa node)
-- [ ] Layout visual validado no bpmn.io
+## Passo 3 — Critérios de Aprovação
 
-Cole o conteúdo do `elicitacao.json` para o Auditor processar.
+Aprovação condicionada a:
+- [ ] O validador automático (`validate-bpmn-xml.js`) rodou com sucesso sem **NENHUM ERRO** (avisos de melhorias são aceitos se justificados).
+- [ ] Layout visual validado no Bizagi/bpmn.io sem cruzamentos ou sobreposições confusas.
+
+Se aprovado, avance o pipeline enviando o JSON de elicitação e o BPMN XML validado para o **Auditor** processar.

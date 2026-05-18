@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://escritorio-bpm/as-is"
+             id="Definitions_1">
+  
+  <collaboration id="Collaboration_1">
+    <participant id="Participant_Cliente" name="Cliente Externo" />
+    <participant id="Participant_Escritorio" name="Escritório de Reembolsos" processRef="Process_Reembolso" />
+    <messageFlow id="MsgFlow_Solicitacao" sourceRef="Participant_Cliente" targetRef="Start_Solicitacao" />
+    <messageFlow id="MsgFlow_Notificacao" sourceRef="Task_Notificar" targetRef="Participant_Cliente" />
+  </collaboration>
+
+  <process id="Process_Reembolso" isExecutable="true" name="Solicitação de Reembolso">
+    <laneSet id="LaneSet_1">
+      <lane id="Lane_Triagem" name="Triagem">
+        <flowNodeRef>Start_Solicitacao</flowNodeRef>
+        <flowNodeRef>Task_Triar</flowNodeRef>
+      </lane>
+      <lane id="Lane_Analise" name="Análise Financeira">
+        <flowNodeRef>Gateway_Merge</flowNodeRef>
+        <flowNodeRef>Timer_Aguardar24h</flowNodeRef>
+        <flowNodeRef>Task_Analisar</flowNodeRef>
+        <flowNodeRef>Gateway_Decisao</flowNodeRef>
+        <flowNodeRef>Task_Notificar</flowNodeRef>
+        <flowNodeRef>Task_Processar</flowNodeRef>
+        <flowNodeRef>End_Reembolso</flowNodeRef>
+      </lane>
+    </laneSet>
+
+    <!-- Data Objects Semânticos (ARIS / CBOK v4.0) -->
+    <dataObject id="DataObj_Solicitacao_Def" />
+    <dataObjectReference id="DataObj_Solicitacao" name="Solicitação de Reembolso" dataObjectRef="DataObj_Solicitacao_Def" />
+    
+    <dataObject id="DataObj_Comprovante_Def" />
+    <dataObjectReference id="DataObj_Comprovante_Input" name="Comprovante de Despesa (Input)" dataObjectRef="DataObj_Comprovante_Def" />
+    <dataObjectReference id="DataObj_Comprovante_Output" name="Comprovante de Despesa (Output)" dataObjectRef="DataObj_Comprovante_Def" />
+    
+    <dataObject id="DataObj_Recibo_Def" />
+    <dataObjectReference id="DataObj_Recibo" name="Recibo de Pagamento" dataObjectRef="DataObj_Recibo_Def" />
+
+    <!-- Fluxo de Controle Principal (Apenas FlowNodes, livre de DataObjects) -->
+    <startEvent id="Start_Solicitacao" name="Solicitação Recebida" />
+    
+    <userTask id="Task_Triar" name="Triar Documentos">
+      <dataOutputAssociation id="DOA_Solicitacao">
+        <targetRef>DataObj_Solicitacao</targetRef>
+      </dataOutputAssociation>
+    </userTask>
+    
+    <exclusiveGateway id="Gateway_Merge" />
+    
+    <intermediateCatchEvent id="Timer_Aguardar24h" name="Aguardar 24h">
+      <timerEventDefinition id="TimerDef_1">
+        <timeDuration xsi:type="tFormalExpression">PT24H</timeDuration>
+      </timerEventDefinition>
+    </intermediateCatchEvent>
+    
+    <userTask id="Task_Analisar" name="Analisar Despesa">
+      <dataInputAssociation id="DIA_Solicitacao">
+        <sourceRef>DataObj_Solicitacao</sourceRef>
+      </dataInputAssociation>
+      <dataInputAssociation id="DIA_Comprovante">
+        <sourceRef>DataObj_Comprovante_Input</sourceRef>
+      </dataInputAssociation>
+    </userTask>
+
+    <exclusiveGateway id="Gateway_Decisao" name="Documentação está regular?" />
+    
+    <userTask id="Task_Notificar" name="Notificar Pendências">
+      <dataOutputAssociation id="DOA_Comprovante">
+        <targetRef>DataObj_Comprovante_Output</targetRef>
+      </dataOutputAssociation>
+    </userTask>
+    
+    <serviceTask id="Task_Processar" name="Processar Reembolso Automático">
+      <dataOutputAssociation id="DOA_Recibo">
+        <targetRef>DataObj_Recibo</targetRef>
+      </dataOutputAssociation>
+    </serviceTask>
+    
+    <endEvent id="End_Reembolso" name="Reembolso Finalizado" />
+
+    <!-- Definição das Conexões Lógicas Estritas (FlowNodes -> FlowNodes) -->
+    <sequenceFlow id="Flow_Start_to_Triar" sourceRef="Start_Solicitacao" targetRef="Task_Triar" />
+    <sequenceFlow id="Flow_Triar_to_Merge" sourceRef="Task_Triar" targetRef="Gateway_Merge" />
+    <sequenceFlow id="Flow_Merge_to_Timer" sourceRef="Gateway_Merge" targetRef="Timer_Aguardar24h" />
+    <sequenceFlow id="Flow_Timer_to_Analisar" sourceRef="Timer_Aguardar24h" targetRef="Task_Analisar" />
+    <sequenceFlow id="Flow_Analisar_to_Decisao" sourceRef="Task_Analisar" targetRef="Gateway_Decisao" />
+    
+    <!-- Ramificações XOR -->
+    <sequenceFlow id="Flow_Decisao_para_Notificar" name="Não" sourceRef="Gateway_Decisao" targetRef="Task_Notificar">
+      <conditionExpression xsi:type="tFormalExpression">Não</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="Flow_Decisao_para_Processar" name="Sim" sourceRef="Gateway_Decisao" targetRef="Task_Processar">
+      <conditionExpression xsi:type="tFormalExpression">Sim</conditionExpression>
+    </sequenceFlow>
+    
+    <!-- Retorno do Loop (Back-edge conectado ao gateway convergente livre de colisão) -->
+    <sequenceFlow id="Flow_Notificar_to_Merge" sourceRef="Task_Notificar" targetRef="Gateway_Merge" />
+    
+    <!-- Finalização -->
+    <sequenceFlow id="Flow_Processar_to_End" sourceRef="Task_Processar" targetRef="End_Reembolso" />
+
+    <!-- Associações Explícitas de Fluxo de Dados para Renderização Visual (Bizagi Modeler) -->
+    <association id="assoc_DOA_Solicitacao" associationDirection="One" sourceRef="Task_Triar" targetRef="DataObj_Solicitacao" />
+    <association id="assoc_DIA_Solicitacao" associationDirection="One" sourceRef="DataObj_Solicitacao" targetRef="Task_Analisar" />
+    <association id="assoc_DIA_Comprovante" associationDirection="One" sourceRef="DataObj_Comprovante_Input" targetRef="Task_Analisar" />
+    <association id="assoc_DOA_Comprovante" associationDirection="One" sourceRef="Task_Notificar" targetRef="DataObj_Comprovante_Output" />
+    <association id="assoc_DOA_Recibo" associationDirection="One" sourceRef="Task_Processar" targetRef="DataObj_Recibo" />
+  </process>
+        <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1">
+    <bpmndi:BPMNShape id="Participant_Escritorio_di" bpmnElement="Participant_Escritorio" isHorizontal="true">
+      <dc:Bounds x="0" y="0" width="1630" height="500" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Participant_Cliente_di" bpmnElement="Participant_Cliente" isHorizontal="true">
+      <dc:Bounds x="0" y="520" width="1630" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Lane_Triagem_di" bpmnElement="Lane_Triagem" isHorizontal="true">
+      <dc:Bounds x="30" y="0" width="1600" height="120" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Lane_Analise_di" bpmnElement="Lane_Analise" isHorizontal="true">
+      <dc:Bounds x="30" y="120" width="1600" height="300" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="DataObj_Solicitacao_di" bpmnElement="DataObj_Solicitacao">
+      <dc:Bounds x="917" y="85" width="36" height="50" />
+      <bpmndi:BPMNLabel>
+        <dc:Bounds x="875" y="50" width="120" height="30" />
+      </bpmndi:BPMNLabel>
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="DataObj_Comprovante_Input_di" bpmnElement="DataObj_Comprovante_Input">
+      <dc:Bounds x="968" y="85" width="36" height="50" />
+      <bpmndi:BPMNLabel>
+        <dc:Bounds x="926" y="50" width="120" height="30" />
+      </bpmndi:BPMNLabel>
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="DataObj_Comprovante_Output_di" bpmnElement="DataObj_Comprovante_Output">
+      <dc:Bounds x="1302" y="405" width="36" height="50" />
+      <bpmndi:BPMNLabel>
+        <dc:Bounds x="1260" y="460" width="120" height="30" />
+      </bpmndi:BPMNLabel>
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="DataObj_Recibo_di" bpmnElement="DataObj_Recibo">
+      <dc:Bounds x="1302" y="225" width="36" height="50" />
+      <bpmndi:BPMNLabel>
+        <dc:Bounds x="1260" y="280" width="120" height="30" />
+      </bpmndi:BPMNLabel>
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Start_Solicitacao_di" bpmnElement="Start_Solicitacao">
+      <dc:Bounds x="222" y="42" width="36" height="36" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Task_Triar_di" bpmnElement="Task_Triar">
+      <dc:Bounds x="360" y="30" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Gateway_Merge_di" bpmnElement="Gateway_Merge" isMarkerVisible="true">
+      <dc:Bounds x="575" y="155" width="50" height="50" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Timer_Aguardar24h_di" bpmnElement="Timer_Aguardar24h">
+      <dc:Bounds x="762" y="162" width="36" height="36" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Task_Analisar_di" bpmnElement="Task_Analisar">
+      <dc:Bounds x="900" y="150" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Gateway_Decisao_di" bpmnElement="Gateway_Decisao" isMarkerVisible="true">
+      <dc:Bounds x="1115" y="155" width="50" height="50" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Task_Notificar_di" bpmnElement="Task_Notificar">
+      <dc:Bounds x="1260" y="330" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Task_Processar_di" bpmnElement="Task_Processar">
+      <dc:Bounds x="1260" y="150" width="120" height="60" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="End_Reembolso_di" bpmnElement="End_Reembolso">
+      <dc:Bounds x="1482" y="162" width="36" height="36" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="Flow_Start_to_Triar_di" bpmnElement="Flow_Start_to_Triar">
+      <di:waypoint x="258" y="60" />
+      <di:waypoint x="360" y="60" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Flow_Triar_to_Merge_di" bpmnElement="Flow_Triar_to_Merge">
+      <di:waypoint x="480" y="60" />
+      <di:waypoint x="480" y="60" />
+      <di:waypoint x="480" y="180" />
+      <di:waypoint x="575" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Flow_Merge_to_Timer_di" bpmnElement="Flow_Merge_to_Timer">
+      <di:waypoint x="625" y="180" />
+      <di:waypoint x="762" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Flow_Timer_to_Analisar_di" bpmnElement="Flow_Timer_to_Analisar">
+      <di:waypoint x="798" y="180" />
+      <di:waypoint x="900" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Flow_Analisar_to_Decisao_di" bpmnElement="Flow_Analisar_to_Decisao">
+      <di:waypoint x="1020" y="180" />
+      <di:waypoint x="1115" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Flow_Decisao_para_Notificar_di" bpmnElement="Flow_Decisao_para_Notificar">
+      <di:waypoint x="1165" y="180" />
+      <di:waypoint x="1200" y="180" />
+      <di:waypoint x="1200" y="360" />
+      <di:waypoint x="1260" y="360" />
+      <bpmndi:BPMNLabel>
+        <dc:Bounds x="1206" y="263" width="50" height="14" />
+      </bpmndi:BPMNLabel>
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Flow_Decisao_para_Processar_di" bpmnElement="Flow_Decisao_para_Processar">
+      <di:waypoint x="1165" y="180" />
+      <di:waypoint x="1260" y="180" />
+      <bpmndi:BPMNLabel>
+        <dc:Bounds x="1188" y="158" width="50" height="14" />
+      </bpmndi:BPMNLabel>
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Flow_Notificar_to_Merge_di" bpmnElement="Flow_Notificar_to_Merge">
+      <di:waypoint x="1320" y="390" />
+      <di:waypoint x="1320" y="405" />
+      <di:waypoint x="600" y="405" />
+      <di:waypoint x="600" y="205" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Flow_Processar_to_End_di" bpmnElement="Flow_Processar_to_End">
+      <di:waypoint x="1380" y="180" />
+      <di:waypoint x="1482" y="180" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="MsgFlow_Solicitacao_di" bpmnElement="MsgFlow_Solicitacao">
+      <di:waypoint x="240" y="520" />
+      <di:waypoint x="240" y="78" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="MsgFlow_Notificacao_di" bpmnElement="MsgFlow_Notificacao">
+      <di:waypoint x="1320" y="390" />
+      <di:waypoint x="1320" y="520" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="assoc_DOA_Solicitacao_di" bpmnElement="assoc_DOA_Solicitacao">
+      <di:waypoint x="420" y="90" />
+      <di:waypoint x="935" y="85" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="assoc_DIA_Solicitacao_di" bpmnElement="assoc_DIA_Solicitacao">
+      <di:waypoint x="935" y="135" />
+      <di:waypoint x="960" y="150" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="assoc_DIA_Comprovante_di" bpmnElement="assoc_DIA_Comprovante">
+      <di:waypoint x="986" y="135" />
+      <di:waypoint x="960" y="150" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="assoc_DOA_Comprovante_di" bpmnElement="assoc_DOA_Comprovante">
+      <di:waypoint x="1320" y="390" />
+      <di:waypoint x="1320" y="405" />
+    </bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="assoc_DOA_Recibo_di" bpmnElement="assoc_DOA_Recibo">
+      <di:waypoint x="1320" y="210" />
+      <di:waypoint x="1320" y="225" />
+    </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

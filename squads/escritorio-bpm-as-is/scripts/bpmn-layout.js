@@ -50,7 +50,7 @@ const BACK_MARGIN    = 40;   // espaço abaixo das lanes para back-edges
 // ROW_PAD é o espaço vertical entre linhas de elementos na mesma lane
 const TOP_GUTTER     = 30;
 const BOTTOM_GUTTER  = 30;
-const ROW_PAD        = 20;
+const ROW_PAD        = 120;
 const CONTENT_X0     = POOL_LABEL_W + LANE_LABEL_W; // x onde começam as colunas
 
 // ─── HELPERS DE PARSE ───────────────────────────────────────────────────────
@@ -111,13 +111,35 @@ while ((lm = laneRe.exec(xml)) !== null) {
 
 // ─── 2. EXTRAÇÃO DE NÓS ─────────────────────────────────────────────────────
 const nodes = {};  // id → { id, type, name }
-const nodeTagRe = /<(?:[\w-]+:)?(startEvent|endEvent|userTask|serviceTask|manualTask|scriptTask|receiveTask|sendTask|callActivity|subProcess|exclusiveGateway|parallelGateway|inclusiveGateway|eventBasedGateway|complexGateway|boundaryEvent|intermediateCatchEvent|intermediateThrowEvent)\s([^>]*?)(?:\/>|>)/g;
+const nodeTagRe = /<(?:[\w-]+:)?(startEvent|endEvent|userTask|serviceTask|manualTask|scriptTask|receiveTask|sendTask|callActivity|subProcess|exclusiveGateway|parallelGateway|inclusiveGateway|eventBasedGateway|complexGateway|boundaryEvent|intermediateCatchEvent|intermediateThrowEvent|dataObjectReference)\s([^>]*?)(?:\/>|>)/g;
 let nm;
 while ((nm = nodeTagRe.exec(xml)) !== null) {
   const type  = nm[1];
   const attrs = parseAttrs(nm[2]);
   if (!attrs.id) continue;
   nodes[attrs.id] = { id: attrs.id, type, name: attrs.name || '' };
+}
+
+// Mapeamento de dataObjectReferences para suas atividades associadas
+const docToActivity = {}; // docRefId -> { activityId, type: 'input' | 'output', assocId }
+
+// Parse de top-level associations (ligação explícita de documentos para maior compatibilidade com o Bizagi)
+const associationRe = /<association\s([^>]*?)(?:\/>|>[\s\S]*?<\/association>)/g;
+let am;
+while ((am = associationRe.exec(xml)) !== null) {
+  const attrs = parseAttrs(am[1]);
+  if (attrs.id && attrs.sourceRef && attrs.targetRef) {
+    const isSourceDoc = attrs.sourceRef.startsWith('DataObj_');
+    const isTargetDoc = attrs.targetRef.startsWith('DataObj_');
+    
+    if (isSourceDoc && !isTargetDoc) {
+      // Documento -> Atividade (Input)
+      docToActivity[attrs.sourceRef] = { activityId: attrs.targetRef, type: 'input', assocId: attrs.id };
+    } else if (!isSourceDoc && isTargetDoc) {
+      // Atividade -> Documento (Output)
+      docToActivity[attrs.targetRef] = { activityId: attrs.sourceRef, type: 'output', assocId: attrs.id };
+    }
+  }
 }
 
 // ─── 3. EXTRAÇÃO DE FLOWS (Sequence e Message) ──────────────────────────────
@@ -137,6 +159,16 @@ while ((mfm = messageFlowRe.exec(xml)) !== null) {
   const attrs = parseAttrs(mfm[1]);
   if (attrs.id && attrs.sourceRef && attrs.targetRef) {
     flows.push({ id: attrs.id, source: attrs.sourceRef, target: attrs.targetRef, name: attrs.name || '', type: 'message' });
+  }
+}
+
+// Adiciona data associations à lista de flows para renderização de edges
+const associationRe2 = /<association\s([^>]*?)(?:\/>|>[\s\S]*?<\/association>)/g;
+let am2;
+while ((am2 = associationRe2.exec(xml)) !== null) {
+  const attrs = parseAttrs(am2[1]);
+  if (attrs.id && attrs.sourceRef && attrs.targetRef) {
+    flows.push({ id: attrs.id, source: attrs.sourceRef, target: attrs.targetRef, name: '', type: 'association' });
   }
 }
 
@@ -162,26 +194,29 @@ if (crossPoolFlows.length > 0) {
 }
 
 // ─── 4. TOPOLOGICAL SORT (DFS iterativo) + LONGEST-PATH ─────────────────────
+// Filtramos dataObjectReference dos nós que participam do fluxo
+const logicalNodeIds = Object.keys(nodes).filter(id => nodes[id].type !== 'dataObjectReference');
+
 const adj = {};
-for (const id of Object.keys(nodes)) adj[id] = [];
+for (const id of logicalNodeIds) adj[id] = [];
 for (const f of flows) {
-  if (f.type === 'sequence') adj[f.source].push({ target: f.target, flowId: f.id });
+  if (f.type === 'sequence' && adj[f.source]) adj[f.source].push({ target: f.target, flowId: f.id });
 }
 
 // DFS iterativo com detecção de back-edges (estado por nó: 0=novo 1=na pilha 2=concluído)
 const state = {};
-for (const id of Object.keys(nodes)) state[id] = 0;
+for (const id of logicalNodeIds) state[id] = 0;
 const backEdgeSet = new Set();
 const topoOrder   = [];
 
 // Acha nós de entrada para iniciar a DFS
 const inDeg = {};
-for (const id of Object.keys(nodes)) inDeg[id] = 0;
+for (const id of logicalNodeIds) inDeg[id] = 0;
 for (const f of flows) {
   if (f.type === 'sequence' && inDeg[f.target] !== undefined) inDeg[f.target]++;
 }
-const startNodes = Object.keys(nodes).filter(id => inDeg[id] === 0);
-const allNodes   = [...startNodes, ...Object.keys(nodes).filter(id => inDeg[id] > 0)];
+const startNodes = logicalNodeIds.filter(id => inDeg[id] === 0);
+const allNodes   = [...startNodes, ...logicalNodeIds.filter(id => inDeg[id] > 0)];
 
 for (const root of allNodes) {
   if (state[root] !== 0) continue;
@@ -215,11 +250,20 @@ topoOrder.reverse();
 
 // Longest-path no DAG ignorando back-edges → coluna de cada nó
 const col = {};
-for (const id of Object.keys(nodes)) col[id] = 0;
+for (const id of logicalNodeIds) col[id] = 0;
 for (const id of topoOrder) {
   for (const { target: v, flowId } of adj[id]) {
     if (backEdgeSet.has(flowId)) continue;
     if ((col[v] ?? 0) <= col[id]) col[v] = col[id] + 1;
+  }
+}
+
+// Atribui coluna e lane dos dataObjectReferences de forma associativa
+for (const id of Object.keys(nodes)) {
+  if (nodes[id].type === 'dataObjectReference' && docToActivity[id]) {
+    const actId = docToActivity[id].activityId;
+    col[id] = col[actId] ?? 0;
+    elemToLane[id] = elemToLane[actId];
   }
 }
 
@@ -308,6 +352,9 @@ const totalW = CONTENT_X0 + maxCol * COL_W + COL_PAD;
 // ─── 6. CÁLCULO DE BOUNDS POR NÓ ────────────────────────────────────────────
 function elemSize(type) {
   const t = type.toLowerCase();
+  if (t === 'dataobjectreference') {
+    return { w: 36, h: 50 };
+  }
   if (t === 'startevent' || t === 'endevent' ||
       t.includes('intermediatecatch') || t.includes('intermediatethrow')) {
     return { w: EVENT_W, h: EVENT_W };
@@ -320,6 +367,7 @@ function elemSize(type) {
 
 const bounds = {};  // nodeId → {x, y, w, h}
 for (const id of Object.keys(nodes)) {
+  if (nodes[id].type === 'dataObjectReference') continue;
   const laneId = elemToLane[id];
   if (!laneId) continue;
   const c   = col[id] ?? 0;
@@ -337,6 +385,53 @@ for (const id of Object.keys(nodes)) {
   const y       = yCenter - (h / 2);
 
   bounds[id] = { x: Math.round(x), y: Math.round(y), w, h };
+}
+
+// Segundo pass: calcula bounds dos dataObjectReferences com distribuição horizontal simétrica
+const actDocs = {}; // activityId -> { inputs: [], outputs: [] }
+for (const id of Object.keys(nodes)) {
+  if (nodes[id].type !== 'dataObjectReference') continue;
+  const assoc = docToActivity[id];
+  if (assoc) {
+    if (!actDocs[assoc.activityId]) {
+      actDocs[assoc.activityId] = { inputs: [], outputs: [] };
+    }
+    if (assoc.type === 'input') {
+      actDocs[assoc.activityId].inputs.push(id);
+    } else {
+      actDocs[assoc.activityId].outputs.push(id);
+    }
+  }
+}
+
+for (const [actId, docs] of Object.entries(actDocs)) {
+  const actB = bounds[actId];
+  if (!actB) continue;
+  
+  const w = 36;
+  const h = 50;
+  
+  // Posiciona múltiplos inputs acima do elemento de forma distribuída
+  if (docs.inputs.length > 0) {
+    const totalW = docs.inputs.length * w + (docs.inputs.length - 1) * 15;
+    let startX = actB.x + (actB.w - totalW) / 2;
+    docs.inputs.forEach((id, index) => {
+      const x = startX + index * (w + 15);
+      const y = actB.y - 65;
+      bounds[id] = { x: Math.round(x), y: Math.round(y), w, h };
+    });
+  }
+  
+  // Posiciona múltiplos outputs abaixo do elemento de forma distribuída
+  if (docs.outputs.length > 0) {
+    const totalW = docs.outputs.length * w + (docs.outputs.length - 1) * 15;
+    let startX = actB.x + (actB.w - totalW) / 2;
+    docs.outputs.forEach((id, index) => {
+      const x = startX + index * (w + 15);
+      const y = actB.y + actB.h + 15;
+      bounds[id] = { x: Math.round(x), y: Math.round(y), w, h };
+    });
+  }
 }
 
 // ─── 7. GERAÇÃO DO XML DI ───────────────────────────────────────────────────
@@ -395,11 +490,31 @@ for (const id of Object.keys(nodes)) {
   if (!b) continue;
   const isGateway = nodes[id].type.includes('Gateway');
   const extra = isGateway ? ' isMarkerVisible="true"' : '';
-  shapeLines.push(
-    `    <bpmndi:BPMNShape id="${id}_di" bpmnElement="${id}"${extra}>`,
-    `      <dc:Bounds x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" />`,
-    `    </bpmndi:BPMNShape>`
-  );
+  
+  if (nodes[id].type === 'dataObjectReference') {
+    const assoc = docToActivity[id];
+    const isInput = assoc && assoc.type === 'input';
+    const labelW = 120;
+    const labelH = 30; // 30px de altura para suportar quebra de linha elegante no Bizagi
+    const labelX = Math.round(b.x + (b.w - labelW) / 2);
+    // Se for input, coloca o label ACIMA (b.y - 35). Se for output, coloca ABAIXO (b.y + b.h + 5)
+    const labelY = Math.round(isInput ? b.y - 35 : b.y + b.h + 5);
+    
+    shapeLines.push(
+      `    <bpmndi:BPMNShape id="${id}_di" bpmnElement="${id}">`,
+      `      <dc:Bounds x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" />`,
+      `      <bpmndi:BPMNLabel>`,
+      `        <dc:Bounds x="${labelX}" y="${labelY}" width="${labelW}" height="${labelH}" />`,
+      `      </bpmndi:BPMNLabel>`,
+      `    </bpmndi:BPMNShape>`
+    );
+  } else {
+    shapeLines.push(
+      `    <bpmndi:BPMNShape id="${id}_di" bpmnElement="${id}"${extra}>`,
+      `      <dc:Bounds x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" />`,
+      `    </bpmndi:BPMNShape>`
+    );
+  }
 }
 
 // Edge shapes (BPMNEdge com waypoints)
@@ -529,6 +644,25 @@ for (const f of flows) {
           { x: tgtMidX, y: tgt.y + tgt.h }
         ];
       }
+    }
+  } else if (f.type === 'association') {
+    // Linha reta vertical entre o documento e a atividade
+    const srcMidX = Math.round(src.x + src.w / 2);
+    const tgtMidX = Math.round(tgt.x + tgt.w / 2);
+    const isDocSource = nodes[f.source]?.type === 'dataObjectReference';
+    
+    if (isDocSource) {
+      // Documento -> Atividade: sai de baixo do doc, entra em cima da atividade
+      waypoints = [
+        { x: srcMidX, y: src.y + src.h },
+        { x: tgtMidX, y: tgt.y }
+      ];
+    } else {
+      // Atividade -> Documento: sai de baixo da atividade, entra em cima do doc
+      waypoints = [
+        { x: srcMidX, y: src.y + src.h },
+        { x: tgtMidX, y: tgt.y }
+      ];
     }
   } else {
     // ── Sequence Flow: Port-Aware Routing ────────────────────────────────────

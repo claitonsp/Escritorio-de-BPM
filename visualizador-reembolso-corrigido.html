@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processo Corrigido - Solicitação de Reembolso OMG</title>
+    <script src="https://unpkg.com/bpmn-js@14/dist/bpmn-viewer.production.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #111827 0%, #030712 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #f3f4f6;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: #1f2937;
+            border-radius: 16px;
+            box-shadow: 0 25px 70px rgba(0,0,0,0.6);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+            border: 1px solid #374151;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+            border-bottom: 4px solid #f59e0b;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 6px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+        
+        .badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: bold;
+            margin: 2px 4px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            text-transform: uppercase;
+        }
+        
+        .badge.success {
+            background: #f59e0b;
+            border-color: #f59e0b;
+        }
+        
+        .content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            background: #111827;
+        }
+        
+        .canvas {
+            flex: 1;
+            position: relative;
+            background: #0b0f19;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .sidebar {
+            width: 380px;
+            background: #1f2937;
+            border-left: 1px solid #374151;
+            overflow-y: auto;
+            padding: 25px;
+        }
+        
+        .sidebar h3 {
+            color: #f3f4f6;
+            font-size: 14px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #10b981;
+            padding-bottom: 6px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        
+        .correction-card {
+            background: #374151;
+            border-left: 4px solid #ef4444;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        .correction-card.fixed {
+            border-left-color: #10b981;
+            background: #1e293b;
+        }
+        
+        .correction-card strong {
+            color: white;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .footer {
+            background: #0f172a;
+            padding: 15px 30px;
+            border-top: 1px solid #374151;
+            font-size: 12px;
+            color: #9ca3af;
+            text-align: center;
+        }
+        
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        
+        .zoom-btn {
+            background: #1f2937;
+            color: white;
+            border: 1px solid #10b981;
+            border-radius: 6px;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.2s;
+        }
+        
+        .zoom-btn:hover {
+            background: #10b981;
+        }
+        
+        .djs-container {
+            background: #0b0f19 !important;
+        }
+        .bjs-powered-by {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Processo de Solicitação de Reembolso - CORRIGIDO</h1>
+            <p>Modelo Adequado às Normas OMG BPMN 2.0.2 e Mapeamento de Dados ARIS/CBOK v4.0</p>
+            <div>
+                <span class="badge success">✓ Sem SequenceFlow em Documentos</span>
+                <span class="badge success">✓ Conexão Lógica FlowNode-to-FlowNode</span>
+                <span class="badge success">✓ Associação de Dados Dotted (Tracejada)</span>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="canvas">
+                <div id="canvas"></div>
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="zoomIn()">+</button>
+                    <button class="zoom-btn" onclick="zoomReset()">⟲</button>
+                    <button class="zoom-btn" onclick="zoomOut()">−</button>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <h3>🛠️ Correções Críticas Aplicadas</h3>
+                
+                <div class="correction-card fixed">
+                    <strong>1. Documentos Fora da Sequência Lógica</strong>
+                    Removemos as setas de fluxo contínuas (`sequenceFlow`) que passavam de forma errada por dentro da <em>Solicitação de Reembolso</em> e do <em>Recibo de Pagamento</em>. O fluxo lógico agora conecta diretamente <strong>Tarefa → Tarefa</strong> e <strong>Tarefa → Gateway</strong>.
+                </div>
+                
+                <div class="correction-card fixed">
+                    <strong>2. Associações de Dados Padrão OMG</strong>
+                    Os documentos agora flutuam simetricamente e utilizam setas tracejadas de associação de dados (`dataInputAssociation` e `dataOutputAssociation`), eliminando bloqueios no fluxo.
+                </div>
+                
+                <div class="correction-card fixed">
+                    <strong>3. Resolução do Documento Perdido</strong>
+                    O documento <em>Comprovante de Despesa (Input)</em> foi mapeado semanticamente como insumo (`dataInputAssociation`) da tarefa <em>Analisar Despesa</em>. Com isso, o motor de layout o posicionou centralizado logo acima da análise, eliminando a colisão que o jogava para o canto esquerdo da tela.
+                </div>
+                
+                <div class="correction-card fixed">
+                    <strong>4. Handoff de Raias Limpo</strong>
+                    O fluxo de controle cruza de forma limpa a raia de <strong>Triagem</strong> para a raia de <strong>Análise Financeira</strong> através de um ponto de junção convergente sem poluição visual.
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <strong>Escritório de BPM Agêntico</strong> | Mapeamento OMG e ARIS em Conformidade Completa | 
+            <a href="bpmn-reembolso-layout.bpmn" download="bpmn-reembolso-layout.bpmn" style="color: #10b981; font-weight: bold; text-decoration: none;">
+                ⬇ Baixar XML Corrigido
+            </a>
+        </div>
+    </div>
+    
+    <script>
+        let viewer;
+        const bpmnFilePath = 'bpmn-reembolso-layout.bpmn';
+        
+        function zoomIn() { viewer.get('zoomScroll').stepZoom(1); }
+        function zoomOut() { viewer.get('zoomScroll').stepZoom(-1); }
+        function zoomReset() {
+            viewer.get('zoomScroll').reset();
+            viewer.get('canvas').zoom('fit-viewport');
+        }
+        
+        async function openDiagram() {
+            try {
+                const response = await fetch(bpmnFilePath);
+                if (!response.ok) throw new Error('Falha ao buscar arquivo XML.');
+                const bpmnXML = await response.text();
+                
+                viewer = new BpmnViewer({ container: '#canvas' });
+                
+                try {
+                    await viewer.importXML(bpmnXML);
+                    viewer.get('canvas').zoom('fit-viewport');
+                    
+                    // Aplicar cores cyberpunk premium escuras
+                    const registry = viewer.get('elementRegistry');
+                    registry.forEach(function(element) {
+                        const gfx = registry.getGraphics(element);
+                        if (element.type === 'bpmn:UserTask' || element.type === 'bpmn:ServiceTask') {
+                            gfx.querySelectorAll('.djs-visual rect').forEach(r => {
+                                r.style.fill = '#1f2937';
+                                r.style.stroke = '#10b981';
+                                r.style.strokeWidth = '2px';
+                            });
+                            gfx.querySelectorAll('.djs-visual text').forEach(t => {
+                                t.style.fill = '#ffffff';
+                            });
+                        } else if (element.type.includes('Gateway')) {
+                            gfx.querySelectorAll('.djs-visual polygon').forEach(p => {
+                                p.style.fill = '#2d1e10';
+                                p.style.stroke = '#f59e0b';
+                                p.style.strokeWidth = '2px';
+                            });
+                            gfx.querySelectorAll('.djs-visual text').forEach(t => {
+                                t.style.fill = '#f3f4f6';
+                            });
+                        } else if (element.type.includes('Event')) {
+                            gfx.querySelectorAll('.djs-visual circle').forEach(c => {
+                                c.style.fill = '#065f46';
+                                c.style.stroke = '#10b981';
+                                c.style.strokeWidth = '2px';
+                            });
+                            gfx.querySelectorAll('.djs-visual text').forEach(t => {
+                                t.style.fill = '#f3f4f6';
+                            });
+                        } else if (element.type === 'bpmn:DataObjectReference') {
+                            gfx.querySelectorAll('.djs-visual path').forEach(p => {
+                                p.style.fill = '#374151';
+                                p.style.stroke = '#f59e0b';
+                                p.style.strokeWidth = '2px';
+                            });
+                            gfx.querySelectorAll('.djs-visual text').forEach(t => {
+                                t.style.fill = '#e5e7eb';
+                            });
+                        } else if (element.type === 'bpmn:Lane' || element.type === 'bpmn:Participant') {
+                            gfx.querySelectorAll('.djs-visual rect').forEach(r => {
+                                r.style.fill = '#111827';
+                                r.style.stroke = '#374151';
+                            });
+                            gfx.querySelectorAll('.djs-visual text').forEach(t => {
+                                t.style.fill = '#9ca3af';
+                            });
+                        } else if (element.type.includes('Flow') || element.type === 'bpmn:Association') {
+                            gfx.querySelectorAll('.djs-visual path').forEach(p => {
+                                p.style.stroke = '#10b981';
+                            });
+                            gfx.querySelectorAll('.djs-visual text').forEach(t => {
+                                t.style.fill = '#e5e7eb';
+                            });
+                        }
+                    });
+                } catch (err) {
+                    console.error('Erro ao renderizar:', err);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        
+        window.addEventListener('load', openDiagram);
+    </script>
+</body>
+</html>

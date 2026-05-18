@@ -16,7 +16,7 @@ Extraia as entidades abaixo da transcrição e retorne JSON estruturado. Retorne
 {
   "processo": "nome do processo",
   "atores": [{ "id": "ator-01", "nome": "...", "tipo": "interno | externo | sistema" }],
-  "atividades": [{ "id": "ativ-01", "nome_bpmn": "...", "descricao": "...", "ator_responsavel": "ator-XX ou sis-XX", "sistema": "sis-XX ou null", "task_type": "userTask | serviceTask | scriptTask" }],
+  "atividades": [{ "id": "ativ-01", "nome_bpmn": "...", "descricao": "...", "ator_responsavel": "ator-XX ou sis-XX", "sistema": "sis-XX ou null", "task_type": "userTask | serviceTask | scriptTask", "documentos_entrada": ["nome-documento-entrada-ou-dado-A"], "documentos_saida": ["nome-documento-saida-ou-dado-B"] }],
   "eventos": [{ "id": "ev-01", "tipo": "start | end", "nome_bpmn": "...", "descricao": "..." }],
   "gateways": [{
     "id": "gw-01", "tipo": "exclusive", "nome_bpmn": "...", "descricao": "...",
